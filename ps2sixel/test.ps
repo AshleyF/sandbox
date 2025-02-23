@@ -1,0 +1,16 @@
+%!PS
+/t 0 def
+/x 300 def
+/y 400 def
+/rotate {t add /t exch def} def
+/move {dup
+       t cos mul x add /x exch def
+       t sin mul y add /y exch def
+       x y lineto} def
+
+newpath
+x y moveto
+/circle {36 {10 rotate 20 move} repeat} def
+36 {circle 10 rotate} repeat
+stroke
+showpage
