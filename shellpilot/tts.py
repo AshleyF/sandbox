@@ -9,6 +9,7 @@ Features:
 
 import hashlib
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -21,6 +22,14 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
 
 # Cache directory for generated audio
 CACHE_DIR = Path(__file__).parent / ".tts_cache"
+
+
+def _is_valid_cache_file(path: Path) -> bool:
+    """Return True if the cache file exists and is non-empty."""
+    try:
+        return path.is_file() and path.stat().st_size > 0
+    except OSError:
+        return False
 
 
 def get_cache_path(text: str, voice: str, model: str) -> Path:
@@ -50,8 +59,14 @@ def generate_speech(
     """
     # Check cache first
     cache_path = get_cache_path(text, voice, model)
-    if cache_path.exists():
+    if _is_valid_cache_file(cache_path):
         return cache_path
+    # Clean up any invalid/partial cache file
+    if cache_path.exists():
+        try:
+            cache_path.unlink()
+        except OSError:
+            pass
     
     # Get API key
     api_key = api_key or os.environ.get("OPENAI_API_KEY")
@@ -76,7 +91,16 @@ def generate_speech(
         )
         
         # Save to cache
-        response.stream_to_file(str(cache_path))
+        temp_path = cache_path.with_suffix(".mp3.tmp")
+        if temp_path.exists():
+            try:
+                temp_path.unlink()
+            except OSError:
+                pass
+        response.stream_to_file(str(temp_path))
+        if not _is_valid_cache_file(temp_path):
+            raise RuntimeError("TTS generation failed; audio file is missing or empty.")
+        temp_path.replace(cache_path)
         return cache_path
         
     except ImportError:
@@ -119,9 +143,50 @@ def play_audio(audio_path: Path, wait: bool = True) -> None:
             # Wait for sound to finish (with small buffer)
             duration = sound.get_length()
             time.sleep(duration + 0.1)
-            
-    except ImportError:
-        print(f"[TTS] pygame not available, cannot play audio: {audio_path}")
+        return
+    except Exception:
+        # Fall back to native player on macOS if pygame can't decode mp3
+        def _add_audio_to_recorder_from_file(path: Path, sample_rate: int = 44100) -> None:
+            try:
+                from recorder import get_active_recorder
+                recorder = get_active_recorder()
+                if recorder is None:
+                    return
+                import numpy as np
+                import imageio_ffmpeg
+                import subprocess
+                ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+                cmd = [
+                    ffmpeg_path,
+                    "-v", "error",
+                    "-i", str(path),
+                    "-f", "f32le",
+                    "-acodec", "pcm_f32le",
+                    "-ac", "2",
+                    "-ar", str(sample_rate),
+                    "-"
+                ]
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if result.returncode != 0 or not result.stdout:
+                    return
+                audio = np.frombuffer(result.stdout, dtype=np.float32)
+                if audio.size % 2 == 1:
+                    audio = audio[:-1]
+                audio = audio.reshape(-1, 2)
+                recorder.add_audio(audio, sample_rate=sample_rate)
+            except Exception:
+                pass
+
+        # Fall back to native player on macOS if pygame can't decode mp3
+        if sys.platform == "darwin":
+            _add_audio_to_recorder_from_file(audio_path)
+            import subprocess
+            if wait:
+                subprocess.run(["afplay", str(audio_path)], check=False)
+            else:
+                subprocess.Popen(["afplay", str(audio_path)])
+        else:
+            print(f"[TTS] pygame not available, cannot play audio: {audio_path}")
 
 
 class TextToSpeech:
@@ -205,7 +270,7 @@ class TextToSpeech:
     def clear_cache(self) -> None:
         """Clear all cached audio files."""
         if CACHE_DIR.exists():
-            for f in CACHE_DIR.glob("*.mp3"):
+            for f in CACHE_DIR.glob("*.mp3*"):
                 f.unlink()
             print(f"[TTS] Cache cleared")
 

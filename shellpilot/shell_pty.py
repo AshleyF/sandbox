@@ -39,7 +39,12 @@ class ShellPilot:
         if shell is None:
             # Use login shell to load rc files
             # On Windows, use wsl to run the default shell
-            shell = "/bin/bash -l" if not WINDOWS else "wsl.exe"
+            if WINDOWS:
+                shell = "wsl.exe"
+            elif sys.platform == "darwin":
+                shell = "/bin/zsh -l"
+            else:
+                shell = "/bin/bash -l"
         
         self.shell = shell
         self.rows = rows
@@ -87,14 +92,16 @@ class ShellPilot:
         import fcntl
         import os
         import pty
+        import shlex
         import struct
         import termios
         
         pid, master_fd = pty.fork()
         
         if pid == 0:
-            # Child process - exec the shell
-            os.execvp(self.shell, [self.shell])
+            # Child process - exec the shell (allow args like "/bin/bash -l")
+            cmd = shlex.split(self.shell) if isinstance(self.shell, str) else list(self.shell)
+            os.execvp(cmd[0], cmd)
         else:
             # Parent process
             self._pid = pid

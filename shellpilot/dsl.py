@@ -24,9 +24,15 @@ Example:
 
 from dataclasses import dataclass, field
 from typing import Union
-import yaml
 import json
 from pathlib import Path
+import sys
+import threading
+import time
+try:
+    import yaml
+except Exception:
+    yaml = None
 
 
 # === Step Types ===
@@ -208,7 +214,54 @@ class Demo:
     
     def run(self, show_viewer: bool = True) -> None:
         """Execute the demo."""
-        from viewer import ScriptedDemo
+        from viewer import ScriptedDemo, TerminalViewer
+        
+        # On macOS, Tk windows must be created and run on the main thread.
+        # Run the demo steps in a worker thread while the UI mainloop blocks.
+        if show_viewer and sys.platform == "darwin":
+            demo = ScriptedDemo(
+                rows=self.rows,
+                cols=self.cols,
+                speed=self.speed,
+                show_viewer=show_viewer,
+                click_keys=self.click_keys,
+                click_volume=self.click_volume,
+                humanize=self.humanize,
+                mistakes=self.mistakes,
+                seed=self.seed,
+                tts_enabled=self.tts_enabled,
+                tts_voice=self.tts_voice,
+                record_video=self.record_video and show_viewer,  # Create recorder but don't auto-start
+                video_fps=self.video_fps,
+                title=self.title,
+                borderless=self.borderless,
+                auto_start_recording=False,  # Don't start recording immediately
+            )
+            demo.shell.start()
+            demo.viewer = TerminalViewer(demo.shell, title=self.title, borderless=self.borderless)
+
+            def run_steps() -> None:
+                # Run setup steps (not recorded)
+                for step in self.setup:
+                    step.execute(demo)
+
+                # Start recording for main steps (wait for UI root)
+                if self.record_video and show_viewer:
+                    start = time.time()
+                    while demo.viewer and demo.viewer.root is None and time.time() - start < 5.0:
+                        time.sleep(0.05)
+                    demo.start_recording()
+
+                # Run main demo steps (recorded)
+                for step in self.steps:
+                    step.execute(demo)
+
+                demo.stop()
+
+            worker = threading.Thread(target=run_steps, daemon=True)
+            worker.start()
+            demo.viewer.start(threaded=False)
+            return
         
         with ScriptedDemo(
             rows=self.rows,
@@ -333,20 +386,28 @@ class Demo:
     
     def to_yaml(self) -> str:
         """Export to YAML format."""
+        if yaml is None:
+            raise RuntimeError("PyYAML not installed. Install with: pip install pyyaml")
         return yaml.dump(self.to_dict(), default_flow_style=False, sort_keys=False)
     
     @classmethod
     def from_yaml(cls, yaml_str: str) -> 'Demo':
         """Load from YAML string."""
+        if yaml is None:
+            raise RuntimeError("PyYAML not installed. Install with: pip install pyyaml")
         return cls.from_dict(yaml.safe_load(yaml_str))
     
     def save(self, path: str) -> None:
         """Save demo to a YAML file."""
+        if yaml is None:
+            raise RuntimeError("PyYAML not installed. Install with: pip install pyyaml")
         Path(path).write_text(self.to_yaml())
     
     @classmethod
     def load(cls, path: str) -> 'Demo':
         """Load demo from a YAML file."""
+        if yaml is None:
+            raise RuntimeError("PyYAML not installed. Install with: pip install pyyaml")
         return cls.from_yaml(Path(path).read_text())
 
 

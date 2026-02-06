@@ -5,6 +5,7 @@ A tkinter-based window that renders the terminal screen in real-time.
 Watch your automation happen at human-readable speed!
 """
 
+import os
 import random
 import threading
 import time
@@ -133,6 +134,16 @@ class TerminalViewer:
     def __init__(self, shell: ShellPilot, title: str = "ShellPilot Viewer", borderless: bool = True):
         self.shell = shell
         self.title = title
+        # Allow env override for easier debugging on platforms where borderless windows misbehave
+        env_borderless = os.environ.get("SHELLPILOT_BORDERLESS", "").strip().lower()
+        if env_borderless in {"0", "false", "no", "off"}:
+            borderless = False
+        elif env_borderless in {"1", "true", "yes", "on"}:
+            borderless = True
+        else:
+            # VS Code's integrated terminal on macOS often fails to show borderless Tk windows.
+            if os.environ.get("TERM_PROGRAM") == "vscode" or os.environ.get("VSCODE_PID"):
+                borderless = False
         self.borderless = borderless
         
         self.root: Optional[tk.Tk] = None
@@ -143,11 +154,13 @@ class TerminalViewer:
         
         self._running = False
         self._ui_thread: Optional[threading.Thread] = None
+        self._force_topmost = False
         
         # Current key display state
         self._current_keys: list[str] = []
         self._key_display_time: float = 0
-        self._key_fade_duration: float = 5.0  # seconds to show key
+        self._default_key_fade_duration: float = 5.0
+        self._key_fade_duration: float = self._default_key_fade_duration  # seconds to show key
         
         # Display settings
         self.font_family = "Consolas" if __import__('sys').platform == 'win32' else "Monaco"
@@ -155,7 +168,7 @@ class TerminalViewer:
         self.bg_color = "#1e1e1e"  # Dark background
         self.fg_color = "#d4d4d4"  # Light text
         self.cursor_color = "#ffffff"
-        self.key_bg_color = "#5a1a1a"  # Semi-transparent deep red (simulated)
+        self.key_bg_color = "#5a1a1a"  # Overlay background color
         self.key_fg_color = "#ffffff"  # White key overlay text
         
         # Vim/Neovim key command descriptions
@@ -331,20 +344,27 @@ class TerminalViewer:
         # Tag cache for color combinations (created lazily)
         self._color_tags_created = set()
         
-    def start(self) -> None:
-        """Start the viewer in a separate thread."""
+    def start(self, threaded: bool = True) -> None:
+        """Start the viewer. If threaded=False, run the UI on the current thread."""
         self._running = True
-        self._ui_thread = threading.Thread(target=self._run_ui, daemon=True)
-        self._ui_thread.start()
-        # Give UI time to initialize
-        time.sleep(0.2)
+        if threaded:
+            self._ui_thread = threading.Thread(target=self._run_ui, daemon=True)
+            self._ui_thread.start()
+            # Give UI time to initialize
+            time.sleep(0.2)
+        else:
+            self._ui_thread = None
+            self._run_ui()
     
     def stop(self) -> None:
         """Stop the viewer."""
         self._running = False
         if self.root:
             try:
-                self.root.quit()
+                if threading.current_thread() is threading.main_thread():
+                    self.root.quit()
+                else:
+                    self.root.after(0, self.root.quit)
             except:
                 pass
     
@@ -359,9 +379,11 @@ class TerminalViewer:
         if self.borderless:
             self.root.overrideredirect(True)
         
-        # Target window size - large for YouTube HD (1920x1080)
-        target_width = 1920
-        target_height = 1080
+        # Target window size - large for YouTube HD (1920x1080), but cap to screen size.
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        target_width = min(1920, max(800, screen_w - 40))
+        target_height = min(1080, max(600, screen_h - 60))
         padding = 60  # Padding on each side
         
         # Available space for terminal content
@@ -453,11 +475,37 @@ class TerminalViewer:
         
         # Position window at top-left and ensure it's visible
         self.root.geometry("+0+0")  # Position at (0, 0)
+        self.root.state("normal")
         self.root.deiconify()  # Ensure window is not minimized
         self.root.lift()  # Bring to front
+        try:
+            self.root.focus_force()
+        except Exception:
+            pass
         self.root.attributes('-topmost', True)  # Keep on top temporarily
         self.root.update()  # Force update
         self.root.attributes('-topmost', False)  # Allow other windows on top again
+
+        # Fallback: if the borderless window fails to map, show a normal window.
+        def _ensure_visible() -> None:
+            try:
+                if not self.root:
+                    return
+                if not self.root.winfo_ismapped():
+                    if self.borderless:
+                        self.root.overrideredirect(False)
+                    self.root.deiconify()
+                    self.root.lift()
+                    self.root.attributes('-topmost', True)
+                    self.root.update()
+                    self.root.attributes('-topmost', False)
+            except Exception:
+                pass
+        
+        self.root.after(200, _ensure_visible)
+        self.root.after(250, self._refresh_topmost)
+        if os.environ.get("SHELLPILOT_VIEWER_DEBUG"):
+            print(f"[VIEWER] screen={screen_w}x{screen_h} window={window_width}x{window_height} borderless={self.borderless}")
         
         # Start refresh loop
         self._refresh()
@@ -539,6 +587,28 @@ class TerminalViewer:
         # Schedule next refresh (60 FPS-ish)
         if self._running:
             self.root.after(16, self._refresh)
+
+    def _refresh_topmost(self) -> None:
+        """Periodically keep the window on top while recording."""
+        if self.root and self._running and self._force_topmost:
+            try:
+                self.root.attributes('-topmost', True)
+                self.root.lift()
+            except Exception:
+                pass
+        if self.root and self._running:
+            self.root.after(250, self._refresh_topmost)
+
+    def set_topmost(self, enabled: bool) -> None:
+        """Enable/disable always-on-top behavior."""
+        self._force_topmost = enabled
+        if self.root:
+            try:
+                self.root.attributes('-topmost', True if enabled else False)
+                if enabled:
+                    self.root.lift()
+            except Exception:
+                pass
     
     def _resolve_color(self, color: str, bold: bool, is_fg: bool) -> str:
         """Convert pyte color name to hex color."""
@@ -638,6 +708,7 @@ class TerminalViewer:
         # Store for display
         self._current_keys = [display_text]
         self._key_display_time = time.time()
+        self._key_fade_duration = self._default_key_fade_duration
         
         # Look up caption from vim commands or use provided one
         if caption:
@@ -865,6 +936,15 @@ class ScriptedDemo:
         """Start video recording (call after setup steps)."""
         if self.recorder and self.viewer and self.viewer.root:
             if not self.recorder._recording:  # Only start if not already recording
+                # Ensure the window is foreground and on top for screen capture
+                try:
+                    self.viewer.root.deiconify()
+                    self.viewer.root.lift()
+                    self.viewer.set_topmost(True)
+                    self.viewer.root.focus_force()
+                    self.viewer.root.update()
+                except Exception:
+                    pass
                 self.recorder.start(self.viewer.root)
                 set_active_recorder(self.recorder)
     
@@ -876,6 +956,13 @@ class ScriptedDemo:
         # Stop recording first to capture final frames
         if self.recorder:
             self.recorder.stop()
+        
+        # Allow other windows on top again
+        if self.viewer and self.viewer.root:
+            try:
+                self.viewer.set_topmost(False)
+            except Exception:
+                pass
         
         if self.viewer:
             self.viewer.stop()
@@ -1092,12 +1179,8 @@ class ScriptedDemo:
             self.viewer._current_keys = [text]
             self.viewer._current_caption = caption
             self.viewer._key_display_time = __import__('time').time()
-            # Set fade duration to match the requested duration
+            # Set timeout only for this overlay. Next key press resets to default.
             self.viewer._key_fade_duration = duration
-        self.wait(duration)
-        # Restore default fade duration after overlay
-        if self.viewer:
-            self.viewer._key_fade_duration = 5.0
         return self
     
     def __enter__(self):

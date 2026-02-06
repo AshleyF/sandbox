@@ -7,15 +7,23 @@ Includes audio recording for keyboard clicks and TTS.
 """
 
 import ctypes
+import os
 import re
 import threading
 import time
 import wave
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Any
 
-import numpy as np
-from PIL import ImageGrab
+try:
+    import numpy as np
+except Exception:
+    np = None
+from PIL import Image, ImageGrab
+try:
+    import mss
+except Exception:
+    mss = None
 
 # Enable DPI awareness on Windows for correct screen capture
 try:
@@ -45,7 +53,7 @@ class AudioTrack:
     
     def __init__(self, sample_rate: int = 44100):
         self.sample_rate = sample_rate
-        self._events: List[Tuple[float, np.ndarray]] = []  # (timestamp, audio_data)
+        self._events: List[Tuple[float, Any]] = []  # (timestamp, audio_data)
         self._start_time: float = 0
         self._lock = threading.Lock()
     
@@ -54,7 +62,7 @@ class AudioTrack:
         self._start_time = time.time()
         self._events = []
     
-    def add_audio(self, audio_data: np.ndarray, sample_rate: int = None) -> None:
+    def add_audio(self, audio_data: Any, sample_rate: int = None) -> None:
         """
         Add audio data at the current timestamp.
         
@@ -80,7 +88,7 @@ class AudioTrack:
         with self._lock:
             self._events.append((timestamp, audio_data.copy()))
     
-    def render(self, duration: float) -> np.ndarray:
+    def render(self, duration: float) -> Optional[Any]:
         """
         Render all audio events into a single audio track.
         
@@ -90,6 +98,8 @@ class AudioTrack:
         Returns:
             Stereo audio data as numpy array
         """
+        if np is None:
+            return None
         # Create empty stereo track
         total_samples = int(duration * self.sample_rate)
         output = np.zeros((total_samples, 2), dtype=np.float32)
@@ -127,6 +137,8 @@ class AudioTrack:
     def save_wav(self, path: Path, duration: float) -> None:
         """Save the audio track to a WAV file."""
         audio = self.render(duration)
+        if audio is None:
+            return
         
         # Convert to int16
         audio_int16 = (audio * 32767).astype(np.int16)
@@ -169,16 +181,39 @@ class VideoRecorder:
         
         self._widget = None  # The widget to capture (not the root window)
         self._writer = None
+        self._mss = None
         self._recording = False
         self._record_thread: Optional[threading.Thread] = None
         self._frame_interval = 1.0 / fps
         self._start_time: float = 0
+        self.capture_scale = 1.0
+        self.encoder_preset = os.environ.get("SHELLPILOT_ENCODER_PRESET", "veryfast")
+        self.max_output_width = 1920
+        self.max_output_height = 1080
         
         # Audio tracking
         self.audio_track = AudioTrack()
         
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        env_scale = os.environ.get("SHELLPILOT_RECORD_SCALE", "").strip()
+        if env_scale:
+            try:
+                self.capture_scale = max(0.25, min(1.0, float(env_scale)))
+            except Exception:
+                self.capture_scale = 1.0
+        env_max_w = os.environ.get("SHELLPILOT_MAX_WIDTH", "").strip()
+        env_max_h = os.environ.get("SHELLPILOT_MAX_HEIGHT", "").strip()
+        if env_max_w:
+            try:
+                self.max_output_width = max(2, int(env_max_w))
+            except Exception:
+                self.max_output_width = 1920
+        if env_max_h:
+            try:
+                self.max_output_height = max(2, int(env_max_h))
+            except Exception:
+                self.max_output_height = 1080
     
     @property
     def output_path(self) -> Path:
@@ -196,8 +231,10 @@ class VideoRecorder:
         """Temporary audio file."""
         return self.output_dir / f"_temp_{sanitize_filename(self.title)}.wav"
     
-    def add_audio(self, audio_data: np.ndarray, sample_rate: int = 44100) -> None:
+    def add_audio(self, audio_data: Any, sample_rate: int = 44100) -> None:
         """Add audio data to the recording at the current timestamp."""
+        if np is None:
+            return
         if self._recording:
             self.audio_track.add_audio(audio_data, sample_rate)
     
@@ -208,8 +245,14 @@ class VideoRecorder:
         Args:
             widget: tkinter widget to capture (e.g., Frame, Text, or root)
         """
-        import imageio
-        
+        if np is None:
+            print("[VIDEO] Numpy unavailable; video recording disabled.")
+            return
+        try:
+            import imageio
+        except Exception as e:
+            print(f"[VIDEO] imageio unavailable; video recording disabled: {e}")
+            return
         self._widget = widget
         self._start_time = time.time()
         
@@ -225,12 +268,18 @@ class VideoRecorder:
             codec='libx264',
             quality=8,
             pixelformat='yuv420p',
+            ffmpeg_params=['-preset', self.encoder_preset],
         )
         
         # Start audio track
         self.audio_track.start()
         
         self._recording = True
+        if mss is not None:
+            try:
+                self._mss = mss.mss()
+            except Exception:
+                self._mss = None
         self._record_thread = threading.Thread(target=self._record_loop, daemon=True)
         self._record_thread.start()
         
@@ -255,6 +304,12 @@ class VideoRecorder:
             except Exception as e:
                 print(f"[VIDEO] Error closing writer: {e}")
             self._writer = None
+        if self._mss is not None:
+            try:
+                self._mss.close()
+            except Exception:
+                pass
+            self._mss = None
         
         # Save audio
         self.audio_track.save_wav(self._temp_audio_path, duration)
@@ -305,15 +360,12 @@ class VideoRecorder:
             import shutil
             shutil.move(str(self._temp_video_path), str(self.output_path))
     
-    def _capture_frame(self) -> Optional[np.ndarray]:
+    def _capture_frame(self) -> Optional[Any]:
         """Capture the current widget as a numpy array."""
         if not self._widget:
             return None
         
         try:
-            # Force update to ensure widget is rendered
-            self._widget.update_idletasks()
-            
             # Get widget position and size on screen
             x = self._widget.winfo_rootx()
             y = self._widget.winfo_rooty()
@@ -329,14 +381,35 @@ class VideoRecorder:
             if width <= 0 or height <= 0:
                 return None
             
-            # Capture the screen region
-            # Use all_screens=True for multi-monitor support
-            bbox = (x, y, x + width, y + height)
-            screenshot = ImageGrab.grab(bbox, all_screens=True)
+            # Capture the screen region.
+            # all_screens=True is significantly slower on macOS.
+            if self._mss is not None:
+                shot = self._mss.grab({"left": x, "top": y, "width": width, "height": height})
+                # mss returns BGRA; convert to RGB.
+                frame = np.array(shot)[:, :, :3][:, :, ::-1]
+            else:
+                all_screens = os.environ.get("SHELLPILOT_ALL_SCREENS", "").strip().lower() in {"1", "true", "yes", "on"}
+                bbox = (x, y, x + width, y + height)
+                screenshot = ImageGrab.grab(bbox, all_screens=all_screens)
+                frame = np.array(screenshot)
             
-            # Convert to numpy array (RGB)
-            frame = np.array(screenshot)
-            
+            # Optional downscale to reduce encoder/capture load.
+            if self.capture_scale < 1.0:
+                h0, w0 = frame.shape[:2]
+                scaled_w = max(2, int(w0 * self.capture_scale))
+                scaled_h = max(2, int(h0 * self.capture_scale))
+                img = Image.fromarray(frame)
+                frame = np.array(img.resize((scaled_w, scaled_h), Image.Resampling.BILINEAR))
+
+            # Hard cap output resolution to control encoder load and final file size.
+            h1, w1 = frame.shape[:2]
+            if w1 > self.max_output_width or h1 > self.max_output_height:
+                fit_scale = min(self.max_output_width / w1, self.max_output_height / h1)
+                out_w = max(2, int(w1 * fit_scale))
+                out_h = max(2, int(h1 * fit_scale))
+                img = Image.fromarray(frame)
+                frame = np.array(img.resize((out_w, out_h), Image.Resampling.BILINEAR))
+
             # Ensure dimensions are even (required for most video codecs)
             h, w = frame.shape[:2]
             if h % 2 == 1:

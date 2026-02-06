@@ -23,7 +23,7 @@ from dsl import Demo, Comment, Say, Line, Type, Keys, Wait, Escape, Enter, IfScr
 
 vim_demo = Demo(
     title="Neovim Demo - ShellPilot",
-    speed=1.0,  # 2x faster typing
+    speed=0.7,  # Slightly slower typing
     rows=12,  # Compact for YouTube
     cols=40,  # Compact for YouTube
     humanize=0.7,  # Natural typing variation

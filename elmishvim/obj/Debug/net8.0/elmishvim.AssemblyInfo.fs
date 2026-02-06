@@ -10,7 +10,7 @@ open System.Reflection
 [<assembly: System.Reflection.AssemblyCompanyAttribute("elmishvim")>]
 [<assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")>]
 [<assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")>]
-[<assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5da194cfc365056e00fc3fe5e80852c4d40b3893")>]
+[<assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+66f5697a58d24d8de2cadf098a88885f86b51f8a")>]
 [<assembly: System.Reflection.AssemblyProductAttribute("elmishvim")>]
 [<assembly: System.Reflection.AssemblyTitleAttribute("elmishvim")>]
 [<assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")>]

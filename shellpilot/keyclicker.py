@@ -10,7 +10,10 @@ import os
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
+try:
+    import numpy as np
+except Exception:
+    np = None
 
 # Hide pygame welcome message
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
@@ -55,6 +58,8 @@ def _init_pygame():
 def _load_sound_array(key_name: str, path: Path) -> None:
     """Load sound file as numpy array for recording."""
     global _sound_arrays
+    if np is None:
+        return
     try:
         # Use pygame's sndarray to get the audio data
         import pygame
