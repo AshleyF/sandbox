@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "byfeWhhmsi2Em+5MaxnS0QtfFFaFDySLtiwuwcICaHivE1B2CH11TwxrDjryMlYXiLYYF3krDjKb3C1i1yp1kA==",
+  "success": true,
+  "projectFilePath": "/Users/ashleyf/Source/sandbox/elmishvim/elmishvim.fsproj",
+  "expectedPackageFiles": [
+    "/Users/ashleyf/.nuget/packages/fable.core/4.2.0/fable.core.4.2.0.nupkg.sha512",
+    "/Users/ashleyf/.nuget/packages/fable.elmish/4.1.0/fable.elmish.4.1.0.nupkg.sha512",
+    "/Users/ashleyf/.nuget/packages/fsharp.core/8.0.100/fsharp.core.8.0.100.nupkg.sha512"
+  ],
+  "logs": []
+}

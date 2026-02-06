@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "0CValtWRiM9ImGeqcqKS+4yeYZXnU9LVY8U9Vc2fdlQiq02pNVIYlFh5DGY+LJQHLv7ZAgv8/YU2hemLpWVmDw==",
+  "success": true,
+  "projectFilePath": "/Users/ashleyf/Source/sandbox/mancala/Mancana.fsproj",
+  "expectedPackageFiles": [
+    "/Users/ashleyf/.nuget/packages/fsharp.core/8.0.200/fsharp.core.8.0.200.nupkg.sha512"
+  ],
+  "logs": []
+}

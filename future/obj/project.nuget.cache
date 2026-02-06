@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "JZT/Pr0p+bIGDV5oQUO31BYdRnq3pnU64MVKkd1ory9gYYBla0P3RoYhD9cveGf614+zIXMABBz/R6oBdr6xJw==",
+  "success": true,
+  "projectFilePath": "/Users/ashleyf/Source/sandbox/future/Future.fsproj",
+  "expectedPackageFiles": [
+    "/Users/ashleyf/.nuget/packages/fsharp.core/6.0.1/fsharp.core.6.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}

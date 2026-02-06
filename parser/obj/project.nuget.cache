@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "S6oqkJo3FQuDEPpzQuqsNRP6iIKG/e050n70cas8uq8HCPXz3thVPUVhordvOQygeDvlr0PfUECJqensIzHolQ==",
+  "success": true,
+  "projectFilePath": "/Users/ashleyf/Source/sandbox/parser/parser.fsproj",
+  "expectedPackageFiles": [
+    "/Users/ashleyf/.nuget/packages/fsharp.core/8.0.100/fsharp.core.8.0.100.nupkg.sha512"
+  ],
+  "logs": []
+}

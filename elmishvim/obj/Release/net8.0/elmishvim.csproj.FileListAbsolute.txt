@@ -1,0 +1,7 @@
+/Users/ashleyf/Source/sandbox/elmishvim/bin/Release/net8.0/elmishvim.deps.json
+/Users/ashleyf/Source/sandbox/elmishvim/bin/Release/net8.0/elmishvim.runtimeconfig.json
+/Users/ashleyf/Source/sandbox/elmishvim/obj/Release/net8.0/elmishvim.GeneratedMSBuildEditorConfig.editorconfig
+/Users/ashleyf/Source/sandbox/elmishvim/obj/Release/net8.0/elmishvim.AssemblyInfoInputs.cache
+/Users/ashleyf/Source/sandbox/elmishvim/obj/Release/net8.0/elmishvim.AssemblyInfo.cs
+/Users/ashleyf/Source/sandbox/elmishvim/obj/Release/net8.0/elmishvim.csproj.CopyComplete
+/Users/ashleyf/Source/sandbox/elmishvim/obj/Release/net8.0/elmishvim.genruntimeconfig.cache

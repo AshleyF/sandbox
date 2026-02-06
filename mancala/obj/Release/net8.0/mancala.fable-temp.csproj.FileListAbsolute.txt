@@ -1,0 +1,6 @@
+/Users/ashleyf/Source/sandbox/mancala/bin/Release/net8.0/mancala.fable-temp.deps.json
+/Users/ashleyf/Source/sandbox/mancala/bin/Release/net8.0/mancala.fable-temp.runtimeconfig.json
+/Users/ashleyf/Source/sandbox/mancala/obj/Release/net8.0/mancala.fable-temp.GeneratedMSBuildEditorConfig.editorconfig
+/Users/ashleyf/Source/sandbox/mancala/obj/Release/net8.0/mancala.fable-temp.AssemblyInfoInputs.cache
+/Users/ashleyf/Source/sandbox/mancala/obj/Release/net8.0/mancala.fable-temp.AssemblyInfo.cs
+/Users/ashleyf/Source/sandbox/mancala/obj/Release/net8.0/mancala.fable-temp.genruntimeconfig.cache
