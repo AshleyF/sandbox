@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+.env
+
+# Caches
+.tts_cache/
+
+# Video output
+videos/
+
+# Demo artifacts
+hello.txt
+*.json

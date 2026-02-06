@@ -1,0 +1,10 @@
+*.fs.js
+*.swp
+
+.vscode/
+.config/
+bin/
+obj/
+fable_modules/
+
+.fake

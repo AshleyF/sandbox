@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32210.308
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "KeyClicker", "KeyClicker.fsproj", "{F1294BAA-35C5-4E0C-85BF-E3D465CF5569}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "PyKeyClicker", "PyKeyClicker.pyproj", "{500A84B6-F54A-4A31-853B-4878935363E1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3091E229-B798-4FCF-894C-1C5B7D0BAB96}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F1294BAA-35C5-4E0C-85BF-E3D465CF5569}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1294BAA-35C5-4E0C-85BF-E3D465CF5569}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1294BAA-35C5-4E0C-85BF-E3D465CF5569}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1294BAA-35C5-4E0C-85BF-E3D465CF5569}.Release|Any CPU.Build.0 = Release|Any CPU
+		{500A84B6-F54A-4A31-853B-4878935363E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{500A84B6-F54A-4A31-853B-4878935363E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E51FEE3A-5796-4C7C-8389-0E44973F0CFF}
+	EndGlobalSection
+EndGlobal

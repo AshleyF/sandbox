@@ -1,0 +1,17 @@
+%!PS
+
+/t 0 def
+/rotate {t add /t exch def} def
+
+/start {newpath 300 400 moveto} def
+/finish {stroke showpage} def
+
+/-rot {3 1 roll} def
+
+/move { dup t sin mul exch t cos mul currentpoint -rot add -rot add lineto} def
+
+/circle {36 {10 rotate 20 move} repeat} def
+
+start
+36 {circle 10 rotate} repeat
+finish

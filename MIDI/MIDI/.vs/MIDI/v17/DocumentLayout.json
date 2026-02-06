@@ -1,0 +1,66 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\source\\sandbox\\MIDI\\MIDI\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A5D33A24-C9F0-4839-B421-41C3BF520D12}|MIDI.fsproj|c:\\source\\sandbox\\midi\\midi\\program.fs||{8A5AA6CF-46E3-4520-A70A-7393D15233E9}",
+      "RelativeMoniker": "D:0:0:{A5D33A24-C9F0-4839-B421-41C3BF520D12}|MIDI.fsproj|solutionrelative:program.fs||{8A5AA6CF-46E3-4520-A70A-7393D15233E9}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A5D33A24-C9F0-4839-B421-41C3BF520D12}|MIDI.fsproj|c:\\source\\sandbox\\midi\\midi\\readme.md||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A5D33A24-C9F0-4839-B421-41C3BF520D12}|MIDI.fsproj|solutionrelative:readme.md||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 4,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Readme.md",
+              "DocumentMoniker": "C:\\source\\sandbox\\MIDI\\MIDI\\Readme.md",
+              "RelativeDocumentMoniker": "Readme.md",
+              "ToolTip": "C:\\source\\sandbox\\MIDI\\MIDI\\Readme.md",
+              "RelativeToolTip": "Readme.md",
+              "ViewState": "AgIAAKkAAAAAAAAAAABFwMYAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2025-04-14T03:11:47.153Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.fs",
+              "DocumentMoniker": "C:\\source\\sandbox\\MIDI\\MIDI\\Program.fs",
+              "RelativeDocumentMoniker": "Program.fs",
+              "ToolTip": "C:\\source\\sandbox\\MIDI\\MIDI\\Program.fs",
+              "RelativeToolTip": "Program.fs",
+              "ViewState": "AgIAAGYAAAAAAAAAAAAgwHgAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-03-29T17:59:11.549Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
