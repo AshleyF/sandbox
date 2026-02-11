@@ -19,40 +19,40 @@ let selectedColor = null;
 let gameOver = false;
 let allGuesses = []; // Track all guesses and their scores for solver
 let possibleCodes = []; // All remaining possible codes
+let allCodes = []; // All 1296 codes (precomputed once)
 
 // ==================== SCORING ALGORITHM ====================
 
 /**
- * Scores a guess against a secret code
+ * Scores a guess against a secret code (optimized - no array copies)
  * Returns { blacks: number, whites: number }
- * - blacks: correct color in correct position
- * - whites: correct color in wrong position
  */
 function scoreGuess(guess, secret) {
     let blacks = 0;
     let whites = 0;
     
-    // Create copies to track which positions have been matched
-    const secretCopy = [...secret];
-    const guessCopy = [...guess];
+    // Track which positions are matched
+    const secretMatched = [false, false, false, false];
+    const guessMatched = [false, false, false, false];
     
     // First pass: count exact matches (blacks)
     for (let i = 0; i < CODE_LENGTH; i++) {
-        if (guessCopy[i] === secretCopy[i]) {
+        if (guess[i] === secret[i]) {
             blacks++;
-            // Mark as matched
-            secretCopy[i] = null;
-            guessCopy[i] = null;
+            secretMatched[i] = true;
+            guessMatched[i] = true;
         }
     }
     
     // Second pass: count color matches in wrong positions (whites)
     for (let i = 0; i < CODE_LENGTH; i++) {
-        if (guessCopy[i] !== null) {
-            const index = secretCopy.indexOf(guessCopy[i]);
-            if (index !== -1) {
-                whites++;
-                secretCopy[index] = null;
+        if (!guessMatched[i]) {
+            for (let j = 0; j < CODE_LENGTH; j++) {
+                if (!secretMatched[j] && guess[i] === secret[j]) {
+                    whites++;
+                    secretMatched[j] = true;
+                    break;
+                }
             }
         }
     }
@@ -92,44 +92,57 @@ function filterPossibleCodes(codes, guess, score) {
 
 /**
  * Knuth's minimax algorithm - finds the guess that minimizes
- * the maximum number of remaining possibilities
+ * the maximum number of remaining possibilities (OPTIMAL VERSION)
+ * 
+ * Guarantees finding in ≤5 guesses by considering ALL codes as candidates
  */
-function findBestGuess(possibleCodes, allCodes = null) {
-    if (possibleCodes.length === 1) {
-        return possibleCodes[0];
+function findBestGuess(possibleCodes) {
+    const n = possibleCodes.length;
+    
+    if (n <= 1) return possibleCodes[0] || null;
+    if (n === 2) return possibleCodes[0];
+    
+    // For first guess, use known optimal: two pairs of different colors
+    if (n === 1296) {
+        return [COLORS[0], COLORS[0], COLORS[1], COLORS[1]];
     }
     
-    if (possibleCodes.length === 0) {
-        return null;
-    }
-    
-    // For the first guess or if few possibilities, use simpler approach
-    if (possibleCodes.length <= 2) {
-        return possibleCodes[0];
-    }
-    
-    // Use possible codes as candidates (could also consider all codes)
-    const candidates = possibleCodes.length <= 100 ? possibleCodes : possibleCodes.slice(0, 100);
-    
-    let bestGuess = candidates[0];
+    let bestGuess = null;
     let bestScore = Infinity;
+    let bestIsPossible = false; // Prefer guesses that could be the answer
     
-    for (const guess of candidates) {
-        // Count how responses partition the remaining possibilities
-        const responseCounts = {};
+    // Consider ALL 1296 codes as candidates (key to optimality)
+    for (let c = 0; c < allCodes.length; c++) {
+        const guess = allCodes[c];
         
-        for (const code of possibleCodes) {
-            const score = scoreGuess(guess, code);
-            const key = `${score.blacks},${score.whites}`;
-            responseCounts[key] = (responseCounts[key] || 0) + 1;
+        // Count how responses partition the remaining possibilities
+        const responseCounts = new Uint16Array(15);
+        
+        for (let i = 0; i < n; i++) {
+            const score = scoreGuess(guess, possibleCodes[i]);
+            responseCounts[score.blacks * 5 + score.whites]++;
         }
         
-        // Minimax: find the maximum partition size
-        const maxPartition = Math.max(...Object.values(responseCounts));
+        // Find maximum partition size
+        let maxPartition = 0;
+        for (let i = 0; i < 15; i++) {
+            if (responseCounts[i] > maxPartition) {
+                maxPartition = responseCounts[i];
+            }
+        }
         
-        if (maxPartition < bestScore) {
+        // Check if this guess is in the possible set
+        const isPossible = possibleCodes.some(code => 
+            code[0] === guess[0] && code[1] === guess[1] && 
+            code[2] === guess[2] && code[3] === guess[3]
+        );
+        
+        // Update best: prefer smaller partitions, tie-break by preferring possible codes
+        if (maxPartition < bestScore || 
+            (maxPartition === bestScore && isPossible && !bestIsPossible)) {
             bestScore = maxPartition;
             bestGuess = guess;
+            bestIsPossible = isPossible;
         }
     }
     
@@ -162,45 +175,53 @@ function generateHint() {
     // Get the best next guess
     const bestGuess = findBestGuess(possibleCodes);
     
+    // Check if bestGuess is in possibleCodes
+    const guessIsPossible = possibleCodes.some(code => 
+        code[0] === bestGuess[0] && code[1] === bestGuess[1] && 
+        code[2] === bestGuess[2] && code[3] === bestGuess[3]
+    );
+    
     if (currentRow === 0) {
-        // First guess hint
+        // First guess hint - explain Knuth's optimal opening
         return { 
-            text: "Tip: A good starting guess uses different colors to gather information. Try:", 
+            text: "Knuth's algorithm recommends starting with two pairs (like RR-BB). Surprisingly, this is mathematically optimal! It reveals both color presence AND position info efficiently, partitioning the 1,296 possibilities better than 4 different colors would.", 
             suggestion: bestGuess 
         };
     }
     
-    if (remaining <= 10) {
-        // Few possibilities left - give more specific hint
-        const colorFreq = {};
-        for (const code of possibleCodes) {
-            for (let i = 0; i < CODE_LENGTH; i++) {
-                const key = `${code[i]}_${i}`;
-                colorFreq[key] = (colorFreq[key] || 0) + 1;
-            }
-        }
-        
-        // Find most likely color-position pairs
-        let bestPair = null;
-        let bestCount = 0;
-        for (const [key, count] of Object.entries(colorFreq)) {
-            if (count > bestCount) {
-                bestCount = count;
-                bestPair = key;
-            }
-        }
-        
-        if (bestPair && bestCount > remaining * 0.6) {
-            const [color, pos] = bestPair.split('_');
-            const posNames = ['first', 'second', 'third', 'fourth'];
-            return { 
-                text: `Strong hint: ${color.toUpperCase()} is very likely in the ${posNames[pos]} position (${Math.round(bestCount/remaining*100)}% of remaining possibilities). Suggested guess:`, 
-                suggestion: bestGuess 
-            };
-        }
+    // Build detailed hint
+    let hint = `${remaining} possible codes remain. `;
+    
+    // Calculate worst-case partition size for this guess
+    const responseCounts = new Uint16Array(15);
+    for (const code of possibleCodes) {
+        const score = scoreGuess(bestGuess, code);
+        responseCounts[score.blacks * 5 + score.whites]++;
+    }
+    let worstPartition = 0;
+    let numPartitions = 0;
+    for (let i = 0; i < 15; i++) {
+        if (responseCounts[i] > 0) numPartitions++;
+        if (responseCounts[i] > worstPartition) worstPartition = responseCounts[i];
     }
     
-    // Analyze which colors are definitely in the code
+    // Explain minimax strategy
+    hint += `Using Knuth's minimax strategy: this guess splits possibilities into ${numPartitions} groups, with at most ${worstPartition} codes in the worst case. `;
+    
+    // Explain if suggesting a code that can't be the answer
+    if (!guessIsPossible) {
+        hint += `Interestingly, this guess CAN'T be the answer—but it's still optimal because it partitions the remaining codes better than any possible answer would! `;
+    }
+    
+    // Guaranteed solve info
+    const guessesLeft = MAX_GUESSES - currentRow;
+    if (remaining <= 2) {
+        hint += `You're guaranteed to solve it in ${remaining} more guess${remaining > 1 ? 'es' : ''}! `;
+    } else if (guessesLeft >= 5) {
+        hint += `Knuth proved any code can be found in ≤5 guesses from here. `;
+    }
+    
+    // Analyze which colors are definitely in/out
     const definitelyPresent = [];
     const definitelyAbsent = [];
     
@@ -220,17 +241,15 @@ function generateHint() {
         if (inNone) definitelyAbsent.push(color);
     }
     
-    let hint = `${remaining} possible codes remain. `;
-    
     if (definitelyPresent.length > 0) {
         hint += `Definitely in the code: ${definitelyPresent.map(c => c.toUpperCase()).join(', ')}. `;
     }
     
     if (definitelyAbsent.length > 0) {
-        hint += `Definitely NOT in the code: ${definitelyAbsent.map(c => c.toUpperCase()).join(', ')}. `;
+        hint += `Ruled out: ${definitelyAbsent.map(c => c.toUpperCase()).join(', ')}. `;
     }
     
-    hint += `Suggested guess:`;
+    hint += `Optimal guess:`;
     
     return { text: hint, suggestion: bestGuess };
 }
@@ -445,7 +464,12 @@ function newGame() {
     selectedColor = null;
     gameOver = false;
     allGuesses = [];
-    possibleCodes = generateAllCodes();
+    
+    // Generate all codes once if not already done
+    if (allCodes.length === 0) {
+        allCodes = generateAllCodes();
+    }
+    possibleCodes = [...allCodes];
     
     createGameBoard();
     
