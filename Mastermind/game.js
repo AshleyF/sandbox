@@ -215,10 +215,15 @@ function generateHint() {
     
     // Guaranteed solve info
     const guessesLeft = MAX_GUESSES - currentRow;
+    const guessesMade = currentRow;
     if (remaining <= 2) {
         hint += `You're guaranteed to solve it in ${remaining} more guess${remaining > 1 ? 'es' : ''}! `;
-    } else if (guessesLeft >= 5) {
-        hint += `Knuth proved any code can be found in ≤5 guesses from here. `;
+    } else if (guessesMade === 0) {
+        hint += `Knuth proved any code can be found in ≤5 total guesses using this strategy. `;
+    } else if (remaining <= 14) {
+        hint += `With ≤14 codes left, at most 2 more guesses needed. `;
+    } else if (remaining <= 256) {
+        hint += `With ≤256 codes left, at most 3 more guesses needed. `;
     }
     
     // Analyze which colors are definitely in/out
