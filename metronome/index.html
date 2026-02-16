@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metronome</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0 0 20px 0;
+      font-size: 2em;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .bpm-display {
+      font-size: 8em;
+      font-weight: bold;
+      text-align: center;
+      margin: 20px 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .bpm-slider-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .bpm-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      outline: none;
+    }
+    .bpm-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 40px;
+      height: 40px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .bpm-slider::-moz-range-thumb {
+      width: 40px;
+      height: 40px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+    }
+    .bpm-input {
+      width: 80px;
+      padding: 10px;
+      font-size: 1.2em;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .settings-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .setting-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .setting-label {
+      color: #888;
+    }
+    select {
+      padding: 10px 14px;
+      font-size: 1em;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .control-label {
+      color: #aaa;
+      min-width: 90px;
+    }
+    .control-input {
+      width: 70px;
+      padding: 10px;
+      font-size: 1em;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .control-unit {
+      color: #666;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 24px;
+      height: 24px;
+      accent-color: #fff;
+      cursor: pointer;
+    }
+    .checkbox-label {
+      color: #ddd;
+      cursor: pointer;
+    }
+    .auto-increment-options {
+      display: none;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    .auto-increment-options.visible {
+      display: block;
+    }
+    .start-btn {
+      width: 100%;
+      padding: 20px;
+      font-size: 1.5em;
+      font-weight: bold;
+      background: #2a2;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .start-btn:hover {
+      background: #3b3;
+    }
+    .start-btn.running {
+      background: #c33;
+    }
+    .start-btn.running:hover {
+      background: #d44;
+    }
+    .beat-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+      padding: 15px 20px;
+      cursor: pointer;
+      border-radius: 8px;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .beat-indicator:active {
+      background: rgba(255,255,255,0.05);
+    }
+    .beat-dot {
+      width: 20px;
+      height: 20px;
+      background: #333;
+      border-radius: 50%;
+      transition: background 0.05s;
+      pointer-events: none;
+    }
+    .beat-dot.active {
+      background: #fff;
+    }
+    .beat-dot.accent {
+      box-shadow: 0 0 6px rgba(255,180,0,0.5);
+      border: 2px solid #fb0;
+    }
+    .stats {
+      text-align: center;
+      color: #666;
+      font-size: 0.9em;
+      margin-top: 10px;
+    }
+    .auto-detect-options {
+      display: none;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    .auto-detect-options.visible {
+      display: block;
+    }
+    .detect-status {
+      text-align: center;
+      margin-bottom: 12px;
+      font-size: 0.95em;
+      color: #aaa;
+      min-height: 1.4em;
+    }
+    .detect-status .listening {
+      color: #f90;
+      animation: pulse-text 1.5s ease-in-out infinite;
+    }
+    .detect-status .locked {
+      color: #2d2;
+    }
+    @keyframes pulse-text {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .confidence-bar-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .confidence-label {
+      color: #888;
+      font-size: 0.85em;
+      min-width: 80px;
+    }
+    .confidence-bar-bg {
+      flex: 1;
+      height: 10px;
+      background: #333;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .confidence-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 5px;
+      transition: width 0.3s, background 0.3s;
+      background: #c33;
+    }
+    .confidence-bar-fill.medium {
+      background: #f90;
+    }
+    .confidence-bar-fill.high {
+      background: #2d2;
+    }
+    .confidence-value {
+      color: #888;
+      font-size: 0.85em;
+      min-width: 36px;
+      text-align: right;
+    }
+    .detect-info {
+      display: flex;
+      justify-content: space-around;
+      font-size: 0.85em;
+      color: #666;
+      margin-top: 8px;
+    }
+    .detect-info span {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .detect-info .value {
+      font-size: 1.3em;
+      color: #ccc;
+      font-variant-numeric: tabular-nums;
+    }
+    .onset-dot-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      min-height: 28px;
+    }
+    .onset-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #441010;
+      box-shadow: 0 0 0px #f00;
+      transition: background 0.06s, box-shadow 0.06s;
+    }
+    .onset-dot.flash {
+      background: #f33;
+      box-shadow: 0 0 14px 4px rgba(255, 50, 50, 0.7);
+    }
+    .onset-dot-label {
+      color: #666;
+      font-size: 0.85em;
+    }
+    .beat-shift-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+    .beat-shift-label {
+      color: #888;
+      font-size: 0.85em;
+    }
+    .beat-shift-btn {
+      width: 44px;
+      height: 36px;
+      font-size: 1.2em;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s;
+    }
+    .beat-shift-btn:hover {
+      background: #444;
+    }
+    .beat-shift-btn:active {
+      background: #555;
+    }
+    .offset-tune-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 0 8px;
+    }
+    .offset-tune-label {
+      color: #888;
+      font-size: 0.8em;
+      white-space: nowrap;
+      min-width: 70px;
+    }
+    .offset-tune-slider {
+      flex: 1;
+      accent-color: #4ecdc4;
+    }
+    .offset-tune-value {
+      color: #ccc;
+      font-size: 0.85em;
+      min-width: 45px;
+      text-align: right;
+    }
+    .tap-tempo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .tap-circle {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 3px solid #555;
+      background: #222;
+      color: #fff;
+      font-size: 0.85em;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: border-color 0.1s, background 0.1s, transform 0.06s;
+      line-height: 1.2;
+    }
+    .tap-circle:active {
+      background: #444;
+      border-color: #fff;
+      transform: scale(0.93);
+    }
+    .tap-circle.flash {
+      border-color: #fff;
+      background: #333;
+    }
+    .tap-info {
+      color: #666;
+      font-size: 0.8em;
+      text-align: center;
+    }
+    .tap-info .tap-bpm {
+      color: #ccc;
+      font-size: 1.4em;
+      font-variant-numeric: tabular-nums;
+    }
+    .tap-row-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+    .tap-circle-sm {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      border: 2px solid #555;
+      background: #222;
+      color: #fff;
+      font-size: 0.65em;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: border-color 0.1s, background 0.1s, transform 0.06s;
+      line-height: 1.2;
+    }
+    .tap-circle-sm:active {
+      background: #444;
+      transform: scale(0.93);
+    }
+    .tap-circle-sm.flash {
+      background: #333;
+    }
+    .tap-circle-sm.primary {
+      border-color: #fb0;
+    }
+    .tap-circle-sm.primary:active {
+      border-color: #fc3;
+    }
+    .tap-circle-sm.align {
+      border-color: #4af;
+    }
+    .tap-circle-sm.align:active {
+      border-color: #6cf;
+    }
+    .fine-adjust {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .fine-adjust-label {
+      font-size: 0.65em;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .fine-adjust-btns {
+      display: flex;
+      gap: 4px;
+    }
+    .fine-adjust-btn {
+      width: 40px;
+      height: 36px;
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #ccc;
+      font-size: 1.1em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.1s;
+    }
+    .fine-adjust-btn:active {
+      background: #444;
+      color: #fff;
+    }
+    .auto-detect-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1em;
+      font-weight: bold;
+      background: #26c;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 10px;
+    }
+    .auto-detect-btn:hover {
+      background: #37d;
+    }
+    .auto-detect-btn.active {
+      background: #c33;
+    }
+    .auto-detect-btn.active:hover {
+      background: #d44;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="bpm-display" id="bpmDisplay">120</div>
+
+    <div class="bpm-slider-container">
+      <input type="range" class="bpm-slider" id="bpmSlider" min="20" max="300" value="120">
+      <input type="number" class="bpm-input" id="bpmInput" min="20" max="300" value="120">
+    </div>
+
+    <div class="settings-row">
+      <div class="setting-group">
+        <span class="setting-label">Time</span>
+        <select id="timeSignature">
+          <option value="2">2/4</option>
+          <option value="3">3/4</option>
+          <option value="4" selected>4/4</option>
+          <option value="5">5/4</option>
+          <option value="6">6/8</option>
+          <option value="7">7/8</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <span class="setting-label">Sound</span>
+        <select id="soundType">
+          <option value="beep">Beep</option>
+          <option value="click">Click</option>
+          <option value="woodblock">Wood Block</option>
+          <option value="cowbell">Cowbell</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="beat-indicator" id="beatIndicator">
+      <div class="beat-dot"></div>
+      <div class="beat-dot"></div>
+      <div class="beat-dot"></div>
+      <div class="beat-dot"></div>
+    </div>
+
+    <div class="tap-row-secondary">
+      <div class="tap-circle-sm primary" id="tapPrimary">TAP<br>PRIMARY</div>
+      <div class="tap-circle-sm align" id="tapAlign">TAP<br>ALIGN</div>
+    </div>
+
+    <div class="tap-tempo-row">
+      <div class="fine-adjust">
+        <span class="fine-adjust-label">Tempo</span>
+        <div class="fine-adjust-btns">
+          <button class="fine-adjust-btn" id="bpmDown" title="-0.1 BPM">▼</button>
+          <button class="fine-adjust-btn" id="bpmUp" title="+0.1 BPM">▲</button>
+        </div>
+      </div>
+      <div class="tap-circle" id="tapCircle">TAP<br>TEMPO</div>
+      <div class="fine-adjust">
+        <span class="fine-adjust-label">Nudge</span>
+        <div class="fine-adjust-btns">
+          <button class="fine-adjust-btn" id="nudgeEarly" title="Shift 5ms earlier">◀</button>
+          <button class="fine-adjust-btn" id="nudgeLate" title="Shift 5ms later">▶</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="autoIncrementEnabled">
+      <label class="checkbox-label" for="autoIncrementEnabled">Auto tempo increase</label>
+    </div>
+
+    <div class="auto-increment-options" id="autoIncrementOptions">
+      <div class="control-row">
+        <span class="control-label">Increment by</span>
+        <input type="number" class="control-input" id="incrementAmount" min="1" max="50" value="5">
+        <span class="control-unit">BPM</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Every</span>
+        <input type="number" class="control-input" id="incrementInterval" min="1" max="999" value="10">
+        <select id="incrementMode">
+          <option value="beats">beats</option>
+          <option value="seconds" selected>seconds</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="autoDetectEnabled">
+      <label class="checkbox-label" for="autoDetectEnabled">Auto beat detect (microphone)</label>
+    </div>
+    <div style="color: #555; font-size: 0.78em; margin-top: -8px; margin-bottom: 8px; padding-left: 34px;">🎧 Use headphones for best results</div>
+
+    <div class="auto-detect-options" id="autoDetectOptions">
+      <div class="detect-status" id="detectStatus">Click below to start listening...</div>
+      <div class="confidence-bar-container">
+        <span class="confidence-label">Confidence</span>
+        <div class="confidence-bar-bg">
+          <div class="confidence-bar-fill" id="confidenceFill"></div>
+        </div>
+        <span class="confidence-value" id="confidenceValue">0%</span>
+      </div>
+      <div class="onset-dot-row">
+        <span class="onset-dot-label">Audio pulse</span>
+        <div class="onset-dot" id="onsetDot"></div>
+      </div>
+      <div class="detect-info" id="detectInfo">
+        <span>Detected BPM<br><span class="value" id="detectedBpmValue">--</span></span>
+        <span>Phase offset<br><span class="value" id="detectedPhaseValue">--</span></span>
+        <span>Hits/sec<br><span class="value" id="detectedOnsetsValue">--</span></span>
+        <span>Best band<br><span class="value" id="detectedBandValue">--</span></span>
+      </div>
+      <div class="beat-shift-row">
+        <span class="beat-shift-label">Shift click</span>
+        <button class="beat-shift-btn" id="shiftLeft" title="Shift click earlier by one beat">◀</button>
+        <button class="beat-shift-btn" id="shiftRight" title="Shift click later by one beat">▶</button>
+      </div>
+      <div class="offset-tune-row">
+        <span class="offset-tune-label">Fine-tune</span>
+        <input type="range" class="offset-tune-slider" id="offsetTuneSlider" min="-150" max="150" value="0" step="1">
+        <span class="offset-tune-value" id="offsetTuneValue">0ms</span>
+      </div>
+      <div style="margin-top: 12px;">
+        <button class="auto-detect-btn" id="autoDetectBtn">🎤 START LISTENING</button>
+      </div>
+    </div>
+
+    <button class="start-btn" id="startBtn">START</button>
+
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <script>
+    // Audio context and sounds
+    let audioCtx = null;
+    
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    // Sound generators (time parameter enables sample-accurate scheduling)
+    function playBeep(accent = false, time) {
+      const t = time || audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = accent ? 1000 : 800;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(accent ? 0.3 : 0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      osc.start(t);
+      osc.stop(t + 0.1);
+    }
+
+    function playClick(accent = false, time) {
+      const t = time || audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'square';
+      osc.frequency.value = accent ? 2500 : 2000;
+      filter.type = 'highpass';
+      filter.frequency.value = 1000;
+      gain.gain.setValueAtTime(accent ? 0.15 : 0.1, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+      osc.start(t);
+      osc.stop(t + 0.02);
+    }
+
+    function playWoodblock(accent = false, time) {
+      const t = time || audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      const baseFreq = accent ? 800 : 600;
+      osc.frequency.setValueAtTime(baseFreq, t);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, t + 0.1);
+      filter.type = 'bandpass';
+      filter.frequency.value = baseFreq;
+      filter.Q.value = 10;
+      gain.gain.setValueAtTime(accent ? 0.4 : 0.3, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      osc.start(t);
+      osc.stop(t + 0.1);
+    }
+
+    function playCowbell(accent = false, time) {
+      const t = time || audioCtx.currentTime;
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc1.type = 'square';
+      osc2.type = 'square';
+      const baseFreq = accent ? 800 : 560;
+      osc1.frequency.value = baseFreq;
+      osc2.frequency.value = baseFreq * 1.5;
+      filter.type = 'bandpass';
+      filter.frequency.value = baseFreq * 1.2;
+      filter.Q.value = 3;
+      gain.gain.setValueAtTime(accent ? 0.2 : 0.15, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      osc1.start(t);
+      osc2.start(t);
+      osc1.stop(t + 0.3);
+      osc2.stop(t + 0.3);
+    }
+
+    function playSound(accent = false, time) {
+      if (!audioCtx) return;
+      const soundType = document.getElementById('soundType').value;
+      switch (soundType) {
+        case 'beep': playBeep(accent, time); break;
+        case 'click': playClick(accent, time); break;
+        case 'woodblock': playWoodblock(accent, time); break;
+        case 'cowbell': playCowbell(accent, time); break;
+      }
+    }
+
+    // State
+    let isRunning = false;
+    let currentBpm = 120;
+    let beatCount = 0;
+    let startTime = 0;
+    let nextBeatTime = 0;
+    let timerInterval = null;
+    let lastIncrementBeat = 0;
+    let lastIncrementTime = 0;
+
+    // DOM elements
+    const bpmDisplay = document.getElementById('bpmDisplay');
+    const bpmSlider = document.getElementById('bpmSlider');
+    const bpmInput = document.getElementById('bpmInput');
+    const startBtn = document.getElementById('startBtn');
+    const beatIndicator = document.getElementById('beatIndicator');
+    const stats = document.getElementById('stats');
+    const timeSignature = document.getElementById('timeSignature');
+    
+    const autoIncrementEnabled = document.getElementById('autoIncrementEnabled');
+    const autoIncrementOptions = document.getElementById('autoIncrementOptions');
+    const incrementAmount = document.getElementById('incrementAmount');
+    const incrementInterval = document.getElementById('incrementInterval');
+    const incrementMode = document.getElementById('incrementMode');
+
+    // BPM control
+    function setBpm(bpm, updateInputs = true) {
+      bpm = Math.max(20, Math.min(300, bpm));
+      currentBpm = bpm;
+      const displayBpm = Math.round(bpm * 10) / 10;
+      // Show one decimal only if it's not a whole number
+      bpmDisplay.textContent = displayBpm % 1 === 0 ? displayBpm.toFixed(0) : displayBpm.toFixed(1);
+      if (updateInputs) {
+        bpmSlider.value = Math.round(bpm);
+        bpmInput.value = Math.round(bpm);
+      }
+    }
+
+    bpmSlider.addEventListener('input', () => {
+      setBpm(parseInt(bpmSlider.value), false);
+      bpmInput.value = currentBpm;
+    });
+
+    bpmInput.addEventListener('change', () => {
+      setBpm(parseInt(bpmInput.value), false);
+      bpmSlider.value = currentBpm;
+    });
+
+    // Auto increment toggle
+    autoIncrementEnabled.addEventListener('change', () => {
+      autoIncrementOptions.classList.toggle('visible', autoIncrementEnabled.checked);
+    });
+
+    // Time signature - update beat indicator
+    function updateBeatDots() {
+      const beats = parseInt(timeSignature.value);
+      beatIndicator.innerHTML = '';
+      for (let i = 0; i < beats; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'beat-dot';
+        if (i === 0) dot.classList.add('accent');
+        beatIndicator.appendChild(dot);
+      }
+      downbeatOffset = 0;
+    }
+
+    timeSignature.addEventListener('change', updateBeatDots);
+
+    // Track which beat is the downbeat (beat 0 = accent)
+    let downbeatOffset = 0;
+
+    // Beat indicator
+    function updateBeatIndicator(beat) {
+      const beats = parseInt(timeSignature.value);
+      const dots = beatIndicator.querySelectorAll('.beat-dot');
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === beat % beats);
+        dot.classList.toggle('accent', i === downbeatOffset % beats);
+      });
+    }
+
+    // Tap on beat indicator to set the downbeat
+    // Finds the most recently played beat and makes it beat 0 (the accented one)
+    beatIndicator.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      handleDownbeatTap();
+    });
+    beatIndicator.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleDownbeatTap();
+    });
+
+    function handleDownbeatTap() {
+      if (!isRunning && !detectActive) return;
+      const beats = parseInt(timeSignature.value);
+      // The most recently played beat position in the measure
+      const lastPlayedBeat = ((beatCount - 1) % beats + beats) % beats;
+      // Shift beatCount so that the last played beat becomes beat 0
+      // beatCount was incremented after playing, so beatCount-1 is the last beat played
+      // We want (beatCount - 1) % beats === 0, so we adjust beatCount
+      beatCount = beatCount - lastPlayedBeat;
+      // Also shift detection beatCount if detecting
+      if (detectActive) {
+        detect.beatCount = detect.beatCount - ((detect.beatCount - 1) % beats + beats) % beats;
+      }
+      downbeatOffset = 0;
+      // Immediately update the indicator to show the accent marker moved
+      updateBeatIndicator(0);
+    }
+
+    // Metronome logic
+    function tick() {
+      const now = performance.now();
+      const beats = parseInt(timeSignature.value);
+
+      // When auto-detect is active, the worklet handles beat scheduling
+      // tick() only runs for the timer display in manual mode
+      if (detectActive) return;
+      
+      while (nextBeatTime <= now) {
+        const beatInMeasure = beatCount % beats;
+
+        // If we're still within one beat interval of a tap, don't play — the tap already clicked.
+        // This prevents double-clicks when tapping near a scheduled beat.
+        const beatDurationMs = 60000 / currentBpm;
+        const timeSinceLastTap = now - lastTapTime;
+        const tappingActive = lastTapTime > 0 && timeSinceLastTap < beatDurationMs * 1.1;
+
+        if (!tappingActive) {
+          playSound(beatInMeasure === 0);
+          updateBeatIndicator(beatInMeasure);
+        }
+        
+        beatCount++;
+        
+        // Check for auto increment
+        if (autoIncrementEnabled.checked && !detectActive && currentBpm < 300) {
+          const increment = parseInt(incrementAmount.value) || 5;
+          const interval = parseInt(incrementInterval.value) || 10;
+          const mode = incrementMode.value;
+          
+          let shouldIncrement = false;
+          
+          if (mode === 'beats') {
+            if (beatCount - lastIncrementBeat >= interval) {
+              shouldIncrement = true;
+              lastIncrementBeat = beatCount;
+            }
+          } else {
+            const elapsedSeconds = (now - lastIncrementTime) / 1000;
+            if (elapsedSeconds >= interval) {
+              shouldIncrement = true;
+              lastIncrementTime = now;
+            }
+          }
+          
+          if (shouldIncrement) {
+            setBpm(Math.min(currentBpm + increment, 300));
+          }
+        }
+        
+        // Calculate next beat time
+        const beatDuration = 60000 / currentBpm;
+        nextBeatTime += beatDuration;
+      }
+      
+      // Update stats
+      const elapsed = (now - startTime) / 1000;
+      const mins = Math.floor(elapsed / 60);
+      const secs = Math.floor(elapsed % 60);
+      stats.textContent = `Beat ${beatCount} | ${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function start() {
+      initAudio();
+      
+      isRunning = true;
+      beatCount = 0;
+      startTime = performance.now();
+      nextBeatTime = startTime;
+      lastIncrementBeat = 0;
+      lastIncrementTime = startTime;
+      
+      startBtn.textContent = 'STOP';
+      startBtn.classList.add('running');
+      
+      tick(); // First beat immediately
+      timerInterval = setInterval(tick, 10);
+    }
+
+    function stop() {
+      isRunning = false;
+      
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      
+      startBtn.textContent = 'START';
+      startBtn.classList.remove('running');
+      
+      // Reset beat indicator
+      const dots = beatIndicator.querySelectorAll('.beat-dot');
+      dots.forEach(dot => dot.classList.remove('active'));
+      
+      stats.textContent = '';
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (detectActive) {
+        // STOP button during detection: stop everything
+        detectActive = false; // prevent stopDetection from auto-starting manual timer
+        if (beatWorkletNode) { beatWorkletNode.disconnect(); beatWorkletNode = null; }
+        if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+        if (micSource) { micSource.disconnect(); micSource = null; }
+        autoDetectBtn.textContent = '\ud83c\udfa4 START LISTENING';
+        autoDetectBtn.classList.remove('active');
+        detectStatus.textContent = 'Stopped.';
+        confidenceFill.style.width = '0%';
+        confidenceFill.className = 'confidence-bar-fill';
+        confidenceValue.textContent = '0%';
+        stop();
+      } else if (isRunning) {
+        stop();
+      } else {
+        start();
+      }
+    });
+
+    // ======== TAP TEMPO ========
+    const tapCircle = document.getElementById('tapCircle');
+
+    let tapTimes = [];
+    let tapHintBpm = null;       // used as hint for auto-detect
+    let tapResetTimeout = null;
+    let lastTapTime = 0;         // when the last tap happened (for suppressing tick during tapping)
+
+    function handleTap() {
+      const now = performance.now();
+      lastTapTime = now;
+
+      // Reset if last tap was more than 3 seconds ago
+      if (tapTimes.length > 0 && (now - tapTimes[tapTimes.length - 1]) > 3000) {
+        tapTimes = [];
+      }
+
+      tapTimes.push(now);
+
+      // Keep last 16 taps max
+      if (tapTimes.length > 16) tapTimes.shift();
+
+      // Flash the circle
+      tapCircle.classList.add('flash');
+      setTimeout(() => tapCircle.classList.remove('flash'), 120);
+
+      // Every tap plays an accented click immediately (beat 1 sound)
+      initAudio();
+      playSound(true);
+      updateBeatIndicator(0);
+
+      if (tapTimes.length >= 2) {
+        // Calculate average interval
+        let totalInterval = 0;
+        for (let i = 1; i < tapTimes.length; i++) {
+          totalInterval += tapTimes[i] - tapTimes[i - 1];
+        }
+        const avgInterval = totalInterval / (tapTimes.length - 1);
+        const tappedBpm = 60000 / avgInterval;
+
+        if (tappedBpm >= 20 && tappedBpm <= 300) {
+          tapHintBpm = tappedBpm;
+          setBpm(tappedBpm);
+
+          if (detectActive && beatWorkletNode) {
+            // Send hint to worklet for tempo + reset phase
+            beatWorkletNode.port.postMessage({ type: 'tapHintBpm', bpm: tappedBpm });
+            beatWorkletNode.port.postMessage({ type: 'tap' });
+          }
+
+          // Align phase: each tap is beat 1, next tick plays beat 2
+          const beatDuration = 60000 / tappedBpm;
+          nextBeatTime = now + beatDuration;
+          beatCount = 1; // we just played beat 0 (the accent above)
+
+          // If metronome isn't running, start the timer
+          if (!isRunning && !detectActive) {
+            isRunning = true;
+            startTime = now;
+            lastIncrementBeat = 0;
+            lastIncrementTime = now;
+            startBtn.textContent = 'STOP';
+            startBtn.classList.add('running');
+            timerInterval = setInterval(tick, 10);
+          }
+        }
+      }
+
+      // Auto-reset tap state after 5 seconds of no tapping
+      if (tapResetTimeout) clearTimeout(tapResetTimeout);
+      tapResetTimeout = setTimeout(() => {
+        tapTimes = [];
+      }, 5000);
+    }
+
+    tapCircle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      handleTap();
+    });
+    tapCircle.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleTap();
+    });
+
+    // Fine-adjust: BPM ±0.1
+    document.getElementById('bpmUp').addEventListener('click', () => {
+      setBpm(currentBpm + 0.1);
+      savePrefs();
+    });
+    document.getElementById('bpmDown').addEventListener('click', () => {
+      setBpm(currentBpm - 0.1);
+      savePrefs();
+    });
+
+    // Fine-adjust: Nudge phase ±5ms
+    document.getElementById('nudgeEarly').addEventListener('click', () => {
+      if (isRunning && !detectActive) {
+        nextBeatTime -= 5;
+      }
+      if (detectActive && beatWorkletNode) {
+        const slider = document.getElementById('offsetTuneSlider');
+        const newVal = Math.max(-150, parseInt(slider.value) - 5);
+        slider.value = newVal;
+        slider.dispatchEvent(new Event('input'));
+      }
+    });
+    document.getElementById('nudgeLate').addEventListener('click', () => {
+      if (isRunning && !detectActive) {
+        nextBeatTime += 5;
+      }
+      if (detectActive && beatWorkletNode) {
+        const slider = document.getElementById('offsetTuneSlider');
+        const newVal = Math.min(150, parseInt(slider.value) + 5);
+        slider.value = newVal;
+        slider.dispatchEvent(new Event('input'));
+      }
+    });
+
+    // ======== TAP PRIMARY ========
+    // Sets the downbeat. Repeated taps can auto-detect time signature.
+    // Also does alignment (nudges phase toward your taps).
+    const tapPrimaryEl = document.getElementById('tapPrimary');
+    let primaryTapTimes = [];
+    let primaryTapTimeout = null;
+
+    function handlePrimaryTap() {
+      if (!isRunning && !detectActive) return;
+      const now = performance.now();
+
+      // Reset if last tap was more than 4 seconds ago
+      if (primaryTapTimes.length > 0 && (now - primaryTapTimes[primaryTapTimes.length - 1]) > 4000) {
+        primaryTapTimes = [];
+      }
+      primaryTapTimes.push(now);
+      if (primaryTapTimes.length > 16) primaryTapTimes.shift();
+
+      // Flash
+      tapPrimaryEl.classList.add('flash');
+      setTimeout(() => tapPrimaryEl.classList.remove('flash'), 120);
+
+      // 1) Set the downbeat (same as hidden beat-indicator tap)
+      const beats = parseInt(timeSignature.value);
+      const lastPlayedBeat = ((beatCount - 1) % beats + beats) % beats;
+      beatCount = beatCount - lastPlayedBeat;
+      if (detectActive) {
+        detect.beatCount = detect.beatCount - ((detect.beatCount - 1) % beats + beats) % beats;
+      }
+      downbeatOffset = 0;
+      updateBeatIndicator(0);
+
+      // 2) Alignment nudge (same logic as TAP ALIGN)
+      applyAlignNudge(now);
+
+      // 3) Auto-detect time signature from tap intervals
+      if (primaryTapTimes.length >= 3) {
+        const beatDurationMs = 60000 / currentBpm;
+        // Measure intervals between primary taps in beats
+        let totalBeats = 0;
+        let count = 0;
+        for (let i = 1; i < primaryTapTimes.length; i++) {
+          const intervalMs = primaryTapTimes[i] - primaryTapTimes[i - 1];
+          const intervalBeats = Math.round(intervalMs / beatDurationMs);
+          if (intervalBeats >= 2 && intervalBeats <= 12) {
+            totalBeats += intervalBeats;
+            count++;
+          }
+        }
+        if (count >= 2) {
+          const avgBeats = Math.round(totalBeats / count);
+          if (avgBeats >= 2 && avgBeats <= 7 && avgBeats !== beats) {
+            // Check consistency: all intervals should be close to avgBeats
+            let consistent = true;
+            for (let i = 1; i < primaryTapTimes.length; i++) {
+              const intervalMs = primaryTapTimes[i] - primaryTapTimes[i - 1];
+              const intervalBeats = intervalMs / beatDurationMs;
+              if (Math.abs(intervalBeats - avgBeats) > 0.8) {
+                consistent = false;
+                break;
+              }
+            }
+            if (consistent) {
+              timeSignature.value = avgBeats.toString();
+              updateBeatDots();
+              beatCount = 1; // just tapped beat 0
+              savePrefs();
+            }
+          }
+        }
+      }
+
+      if (primaryTapTimeout) clearTimeout(primaryTapTimeout);
+      primaryTapTimeout = setTimeout(() => { primaryTapTimes = []; }, 5000);
+    }
+
+    tapPrimaryEl.addEventListener('mousedown', (e) => { e.preventDefault(); handlePrimaryTap(); });
+    tapPrimaryEl.addEventListener('touchstart', (e) => { e.preventDefault(); handlePrimaryTap(); });
+
+    // ======== TAP ALIGN ========
+    // Pure phase alignment. Nudges the metronome phase so clicks land on your taps.
+    // Uses exponentially weighted moving average of offsets.
+    const tapAlignEl = document.getElementById('tapAlign');
+    let alignEwma = 0;        // exponentially weighted offset in ms
+    let alignSamples = 0;     // how many align taps we've collected
+    const alignAlpha = 0.4;   // weight for newest sample (0.4 = recent-biased)
+
+    function applyAlignNudge(now) {
+      if (!isRunning && !detectActive) return;
+      const beatDurationMs = 60000 / currentBpm;
+
+      // How far is this tap from the nearest beat?
+      // nextBeatTime is the next scheduled beat. The most recent beat was at (nextBeatTime - beatDurationMs).
+      const lastBeatTime = nextBeatTime - beatDurationMs;
+      let offset = now - lastBeatTime; // positive = tap is after the beat
+
+      // Wrap to [-halfBeat, +halfBeat]
+      while (offset > beatDurationMs / 2) offset -= beatDurationMs;
+      while (offset < -beatDurationMs / 2) offset += beatDurationMs;
+
+      // Exponentially weighted moving average
+      if (alignSamples === 0) {
+        alignEwma = offset;
+      } else {
+        alignEwma = alignAlpha * offset + (1 - alignAlpha) * alignEwma;
+      }
+      alignSamples++;
+
+      // Apply the averaged nudge
+      // Only apply if we have enough confidence (at least 2 samples) or offset is large
+      if (alignSamples >= 2 || Math.abs(offset) > 20) {
+        nextBeatTime += alignEwma;
+        // Reset the average after applying so it doesn't accumulate
+        alignEwma = 0;
+        alignSamples = 0;
+      }
+    }
+
+    function handleAlignTap() {
+      if (!isRunning && !detectActive) return;
+      const now = performance.now();
+
+      // Flash
+      tapAlignEl.classList.add('flash');
+      setTimeout(() => tapAlignEl.classList.remove('flash'), 120);
+
+      applyAlignNudge(now);
+    }
+
+    tapAlignEl.addEventListener('mousedown', (e) => { e.preventDefault(); handleAlignTap(); });
+    tapAlignEl.addEventListener('touchstart', (e) => { e.preventDefault(); handleAlignTap(); });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+        e.preventDefault();
+        startBtn.click();
+      }
+    });
+
+    // Wake Lock to prevent device from sleeping
+    let wakeLock = null;
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake Lock released');
+          });
+        }
+      } catch (err) {
+        console.log('Wake Lock error:', err.message);
+      }
+    }
+    
+    requestWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    });
+
+    // LocalStorage persistence
+    const STORAGE_KEY = 'metronome_prefs';
+    
+    function savePrefs() {
+      const prefs = {
+        bpm: currentBpm,
+        timeSignature: timeSignature.value,
+        soundType: document.getElementById('soundType').value,
+        autoIncrement: autoIncrementEnabled.checked,
+        incrementAmount: incrementAmount.value,
+        incrementInterval: incrementInterval.value,
+        incrementMode: incrementMode.value
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    }
+    
+    function loadPrefs() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const prefs = JSON.parse(stored);
+          if (prefs.bpm) setBpm(prefs.bpm);
+          if (prefs.timeSignature) timeSignature.value = prefs.timeSignature;
+          if (prefs.soundType) document.getElementById('soundType').value = prefs.soundType;
+          if (prefs.autoIncrement !== undefined) {
+            autoIncrementEnabled.checked = prefs.autoIncrement;
+            autoIncrementOptions.classList.toggle('visible', prefs.autoIncrement);
+          }
+          if (prefs.incrementAmount) incrementAmount.value = prefs.incrementAmount;
+          if (prefs.incrementInterval) incrementInterval.value = prefs.incrementInterval;
+          if (prefs.incrementMode) incrementMode.value = prefs.incrementMode;
+        }
+      } catch (e) {
+        console.log('Could not load preferences:', e);
+      }
+    }
+    
+    // Add change listeners to save preferences
+    bpmSlider.addEventListener('change', savePrefs);
+    bpmInput.addEventListener('change', savePrefs);
+    timeSignature.addEventListener('change', savePrefs);
+    document.getElementById('soundType').addEventListener('change', savePrefs);
+    autoIncrementEnabled.addEventListener('change', savePrefs);
+    incrementAmount.addEventListener('change', savePrefs);
+    incrementInterval.addEventListener('change', savePrefs);
+    incrementMode.addEventListener('change', savePrefs);
+
+    // ======== AUTO BEAT DETECTION (AudioWorklet) ========
+    const autoDetectEnabled = document.getElementById('autoDetectEnabled');
+    const autoDetectOptions = document.getElementById('autoDetectOptions');
+    const autoDetectBtn = document.getElementById('autoDetectBtn');
+    const detectStatus = document.getElementById('detectStatus');
+    const confidenceFill = document.getElementById('confidenceFill');
+    const confidenceValue = document.getElementById('confidenceValue');
+    const detectedBpmValue = document.getElementById('detectedBpmValue');
+    const detectedPhaseValue = document.getElementById('detectedPhaseValue');
+    const detectedOnsetsValue = document.getElementById('detectedOnsetsValue');
+    const detectedBandValue = document.getElementById('detectedBandValue');
+
+    const onsetDot = document.getElementById('onsetDot');
+    let onsetDotTimeout = null;
+
+    let detectActive = false;
+    let micStream = null;
+    let micSource = null;
+    let beatWorkletNode = null;
+    let workletDataUrl = null;
+    let workletRegistered = false;
+
+    // Detection state (updated from worklet messages)
+    const detect = {
+      estimatedBpm: null,
+      bpmConfidence: 0,
+      lockedBpm: null,
+      lockThreshold: 0.5,
+      phaseOffset: 0,
+      onsetRate: 0,
+      bestBand: '--',
+      manualShiftMs: 0,
+      // Beat scheduling
+      scheduledBeats: new Set(),   // track scheduled beat IDs to avoid doubles
+      beatCount: 0,
+    };
+
+    // ---- AudioWorklet processor code (inlined as Blob URL) ----
+    const workletCode = `
+// ---- Radix-2 FFT (in-place, preallocated) ----
+function fftInPlace(real, imag) {
+  const n = real.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    while (j & bit) { j ^= bit; bit >>= 1; }
+    j ^= bit;
+    if (i < j) {
+      let t = real[i]; real[i] = real[j]; real[j] = t;
+      t = imag[i]; imag[i] = imag[j]; imag[j] = t;
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const half = len >> 1;
+    const ang = -2 * Math.PI / len;
+    const wR = Math.cos(ang), wI = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cR = 1, cI = 0;
+      for (let j = 0; j < half; j++) {
+        const a = i + j, b = a + half;
+        const tR = cR * real[b] - cI * imag[b];
+        const tI = cR * imag[b] + cI * real[b];
+        real[b] = real[a] - tR;
+        imag[b] = imag[a] - tI;
+        real[a] += tR;
+        imag[a] += tI;
+        const nr = cR * wR - cI * wI;
+        cI = cR * wI + cI * wR;
+        cR = nr;
+      }
+    }
+  }
+}
+
+class BeatDetectorProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    const sr = sampleRate;
+    this.sr = sr;
+
+    // FFT config
+    this.fftSize = 1024;
+    this.hopSize = 256;
+
+    // Ring buffer for input audio
+    this.ringBuf = new Float32Array(this.fftSize * 4);
+    this.ringPos = 0;
+    this.samplesUntilHop = this.hopSize;
+
+    // Hann window (precomputed)
+    this.hannWin = new Float32Array(this.fftSize);
+    for (let i = 0; i < this.fftSize; i++) {
+      this.hannWin[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (this.fftSize - 1)));
+    }
+
+    // FFT work arrays (reused)
+    this.fftReal = new Float32Array(this.fftSize);
+    this.fftImag = new Float32Array(this.fftSize);
+
+    // Magnitude spectra
+    const halfN = this.fftSize / 2 + 1;
+    this.mag = new Float32Array(halfN);
+    this.prevMag = new Float32Array(halfN);
+    this.hasPrevMag = false;
+
+    // ---- Multi-band setup ----
+    // 6 bands: each gets its own onset strength buffer for independent autocorrelation
+    const binHz = sr / this.fftSize;
+    this.bands = [
+      { name: 'sub-bass', lo: 30,   hi: 90,    weight: 1.0 },  // kick fundamental
+      { name: 'bass',     lo: 90,   hi: 200,   weight: 1.0 },  // kick body
+      { name: 'low-mid',  lo: 200,  hi: 500,   weight: 0.8 },  // snare body, toms
+      { name: 'mid',      lo: 500,  hi: 1500,  weight: 0.5 },  // snare crack
+      { name: 'hi-mid',   lo: 1500, hi: 4000,  weight: 0.3 },  // transients
+      { name: 'high',     lo: 4000, hi: 10000, weight: 0.1 },  // hi-hats, cymbals
+    ];
+    for (const b of this.bands) {
+      b.binLo = Math.max(1, Math.floor(b.lo / binHz));
+      b.binHi = Math.min(this.fftSize / 2, Math.floor(b.hi / binHz));
+    }
+    this.numBands = this.bands.length;
+
+    // Onset strength rolling buffers (per band + combined)
+    this.osBufLen = 1500;
+    this.bandOsBufs = [];
+    for (let b = 0; b < this.numBands; b++) {
+      this.bandOsBufs.push(new Float32Array(this.osBufLen));
+    }
+    this.osBufCombined = new Float32Array(this.osBufLen);
+    this.osPos = 0;
+    this.osFilled = 0;
+
+    // Running stats for adaptive threshold (on combined signal)
+    this.fluxMean = 0;
+    this.fluxVar = 0;
+    this.fluxAlpha = 0.003;
+    this.lastOnsetFrame = -100;
+    this.minOnsetGapFrames = Math.floor(0.12 * sr / this.hopSize);
+
+    // Onset event tracking
+    this.onsetCount = 0;
+    this.onsetCountResetFrame = 0;
+    this.frameCount = 0;
+
+    // Tempo estimation
+    this.tempoBpm = 0;
+    this.tempoConfidence = 0;
+    this.tempoUpdateCounter = 0;
+    this.tempoUpdateInterval = 40;
+    this.smoothedBpm = 0;
+    this.bestBandIdx = -1;  // which band currently has clearest beat
+
+    // Autocorrelation work arrays
+    this.maxLag = Math.ceil((sr / this.hopSize) * 60 / 50);
+    this.minLag = Math.floor((sr / this.hopSize) * 60 / 200);
+    this.corrBuf = new Float32Array(this.maxLag + 1);
+
+    // PLL beat phase tracker
+    this.beatPhase = 0;          // 0..1 (0 = on the beat)
+    this.beatPeriodFrames = 0;   // beat period in hop-frames
+    this.pllGain = 0.12;         // phase correction strength
+    this.pllFreqGain = 0.002;    // tempo correction from phase drift
+
+    // Beat scheduling
+    this.nextBeatFrame = -1;
+    this.totalFrames = 0;
+    this.lastPostedBeatId = -1;
+
+    // Fine tune offset (in frames)
+    this.fineTuneFrames = 0;
+
+    // Tap tempo
+    this.tapHintBpm = 0;
+
+    // Message handling
+    this.port.onmessage = (e) => {
+      const msg = e.data;
+      if (msg.type === 'tap') {
+        // Reset phase to beat
+        this.beatPhase = 0;
+        this.nextBeatFrame = this.totalFrames + 1;
+      }
+      if (msg.type === 'tapHintBpm') {
+        this.tapHintBpm = msg.bpm;
+      }
+      if (msg.type === 'fineTune') {
+        this.fineTuneFrames = Math.round((msg.ms / 1000) * this.sr / this.hopSize);
+      }
+    };
+  }
+
+  analyzeFrame() {
+    this.frameCount++;
+    this.totalFrames++;
+
+    // Extract frame from ring buffer, apply Hann window
+    const n = this.fftSize;
+    const ringLen = this.ringBuf.length;
+    const start = (this.ringPos - n + ringLen) % ringLen;
+    for (let i = 0; i < n; i++) {
+      this.fftReal[i] = this.ringBuf[(start + i) % ringLen] * this.hannWin[i];
+      this.fftImag[i] = 0;
+    }
+
+    // FFT
+    fftInPlace(this.fftReal, this.fftImag);
+
+    // Magnitude spectrum
+    const halfN = n / 2;
+    for (let i = 0; i <= halfN; i++) {
+      this.mag[i] = Math.sqrt(this.fftReal[i] * this.fftReal[i] + this.fftImag[i] * this.fftImag[i]);
+    }
+
+    if (!this.hasPrevMag) {
+      this.prevMag.set(this.mag);
+      this.hasPrevMag = true;
+      return;
+    }
+
+    // Compute spectral flux per band (half-wave rectified)
+    let combinedFlux = 0;
+    for (let b = 0; b < this.numBands; b++) {
+      const band = this.bands[b];
+      let bandFlux = 0;
+      for (let i = band.binLo; i < band.binHi; i++) {
+        const d = this.mag[i] - this.prevMag[i];
+        if (d > 0) bandFlux += d;
+      }
+      // Store per-band flux in its own buffer (for autocorrelation)
+      this.bandOsBufs[b][this.osPos] = bandFlux;
+      // Weighted combination for onset detection
+      combinedFlux += bandFlux * band.weight;
+    }
+
+    // Store combined signal
+    this.osBufCombined[this.osPos] = combinedFlux;
+    this.osPos = (this.osPos + 1) % this.osBufLen;
+    if (this.osFilled < this.osBufLen) this.osFilled++;
+
+    // Running stats (exponential moving)
+    const prevMean = this.fluxMean;
+    this.fluxMean += this.fluxAlpha * (combinedFlux - this.fluxMean);
+    this.fluxVar += this.fluxAlpha * ((combinedFlux - prevMean) * (combinedFlux - this.fluxMean) - this.fluxVar);
+    const fluxStd = Math.sqrt(Math.max(0, this.fluxVar));
+
+    // Discrete onset detection — high threshold to only catch kick/snare hits
+    const threshold = this.fluxMean + 3.0 * fluxStd;
+    const frameSinceLastOnset = this.frameCount - this.lastOnsetFrame;
+    const isOnset = combinedFlux > threshold && combinedFlux > 0.01 && frameSinceLastOnset >= this.minOnsetGapFrames;
+
+    if (isOnset) {
+      this.lastOnsetFrame = this.frameCount;
+      this.onsetCount++;
+      this.port.postMessage({ type: 'onset', strength: combinedFlux });
+
+      // PLL phase correction: only nudge on STRONG onsets
+      const onsetStrengthRatio = combinedFlux / (threshold + 0.001);
+      if (this.beatPeriodFrames > 0 && this.tempoConfidence > 0.3 && onsetStrengthRatio > 1.3) {
+        let phaseErr = this.beatPhase;
+        if (phaseErr > 0.5) phaseErr -= 1; // wrap to [-0.5, 0.5]
+
+        // Weight correction by how strong the onset is above threshold
+        const strengthWeight = Math.min((onsetStrengthRatio - 1.0) * 2.0, 1.5);
+        const correction = phaseErr * this.pllGain * strengthWeight;
+        this.beatPhase -= correction;
+        if (this.beatPhase < 0) this.beatPhase += 1;
+        if (this.beatPhase >= 1) this.beatPhase -= 1;
+
+        // Slight tempo correction from persistent phase error
+        this.beatPeriodFrames *= (1 + phaseErr * this.pllFreqGain);
+      }
+    }
+
+    // Save prev magnitude
+    this.prevMag.set(this.mag);
+
+    // Tempo estimation (periodically)
+    this.tempoUpdateCounter++;
+    if (this.tempoUpdateCounter >= this.tempoUpdateInterval && this.osFilled >= 400) {
+      this.tempoUpdateCounter = 0;
+      this.estimateTempo();
+    }
+
+    // Advance beat phase
+    if (this.beatPeriodFrames > 0) {
+      const phaseAdvance = 1.0 / this.beatPeriodFrames;
+      this.beatPhase += phaseAdvance;
+
+      // Beat crossing: phase wrapped past 1
+      if (this.beatPhase >= 1) {
+        this.beatPhase -= 1;
+
+        // Compute the precise audio time for this beat
+        const framesAhead = (1 - this.beatPhase) * this.beatPeriodFrames;
+        const samplesAhead = framesAhead * this.hopSize;
+        const fineTuneSamples = this.fineTuneFrames * this.hopSize;
+        const beatTime = currentTime + (samplesAhead - fineTuneSamples) / this.sr;
+
+        const beatId = this.totalFrames;
+        if (beatId !== this.lastPostedBeatId) {
+          this.lastPostedBeatId = beatId;
+          this.port.postMessage({
+            type: 'beat',
+            time: beatTime,
+            bpm: this.smoothedBpm,
+            confidence: this.tempoConfidence,
+            beatId: beatId
+          });
+        }
+      }
+    }
+
+    // Periodic status update (~5 times/sec)
+    if (this.frameCount % 37 === 0) {
+      // Onset rate from actual detected onsets (count / elapsed time)
+      const framesPerSec = this.sr / this.hopSize;
+      const elapsedSec = this.frameCount / framesPerSec;
+      const onsetRate = elapsedSec > 1 ? this.onsetCount / elapsedSec : 0;
+      // Reset periodically to keep rate current
+      if (this.frameCount - this.onsetCountResetFrame > framesPerSec * 5) {
+        this.onsetCount = 0;
+        this.onsetCountResetFrame = this.frameCount;
+      }
+
+      this.port.postMessage({
+        type: 'status',
+        bpm: this.smoothedBpm > 0 ? Math.round(this.smoothedBpm * 10) / 10 : 0,
+        confidence: this.tempoConfidence,
+        phaseOffset: this.beatPeriodFrames > 0 ? Math.abs(this.beatPhase > 0.5 ? this.beatPhase - 1 : this.beatPhase) * (this.beatPeriodFrames * this.hopSize / this.sr * 1000) : 0,
+        onsetRate: onsetRate,
+        bestBand: this.bestBandIdx >= 0 ? this.bands[this.bestBandIdx].name : 'combined'
+      });
+    }
+  }
+
+  // Run autocorrelation on a single band buffer, return { bestLag, bestCorr }
+  bandAutocorrelation(buf) {
+    const filled = this.osFilled;
+    const pos = this.osPos;
+    const minLag = this.minLag;
+    const maxLag = Math.min(this.maxLag, Math.floor(filled * 0.4));
+    const analysisLen = Math.min(filled, 800);
+
+    if (maxLag <= minLag || analysisLen < 200) return { bestLag: 0, bestCorr: -1 };
+
+    // Compute mean
+    let mean = 0;
+    for (let i = 0; i < analysisLen; i++) {
+      mean += buf[(pos - 1 - i + this.osBufLen) % this.osBufLen];
+    }
+    mean /= analysisLen;
+
+    // Self-energy
+    let energy0 = 0;
+    for (let i = 0; i < analysisLen; i++) {
+      const v = buf[(pos - 1 - i + this.osBufLen) % this.osBufLen] - mean;
+      energy0 += v * v;
+    }
+    if (energy0 < 0.00001) return { bestLag: 0, bestCorr: -1 };
+
+    let bestLag = 0;
+    let bestCorr = -1;
+
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      let corr = 0;
+      for (let i = 0; i < analysisLen - lag; i++) {
+        const v1 = buf[(pos - 1 - i + this.osBufLen) % this.osBufLen] - mean;
+        const v2 = buf[(pos - 1 - i - lag + this.osBufLen) % this.osBufLen] - mean;
+        corr += v1 * v2;
+      }
+      corr /= energy0;
+      this.corrBuf[lag] = corr;
+
+      if (corr > bestCorr) {
+        bestCorr = corr;
+        bestLag = lag;
+      }
+    }
+
+    return { bestLag, bestCorr };
+  }
+
+  estimateTempo() {
+    // ---- Multi-band autocorrelation ----
+    // Run autocorrelation on each frequency band independently.
+    // Pick the band with the clearest (highest) autocorrelation peak.
+    // This isolates the beat even when some bands are contaminated by
+    // vocals, melody, or other non-rhythmic content.
+
+    const minLag = this.minLag;
+    const maxLag = Math.min(this.maxLag, Math.floor(this.osFilled * 0.4));
+    if (maxLag <= minLag) return;
+
+    let overallBestCorr = -1;
+    let overallBestLag = 0;
+    let overallBestBand = -1;
+
+    for (let b = 0; b < this.numBands; b++) {
+      const result = this.bandAutocorrelation(this.bandOsBufs[b]);
+      if (result.bestCorr > overallBestCorr) {
+        overallBestCorr = result.bestCorr;
+        overallBestLag = result.bestLag;
+        overallBestBand = b;
+      }
+    }
+
+    // Also try the combined signal (sometimes clearer than any single band)
+    const combinedResult = this.bandAutocorrelation(this.osBufCombined);
+    if (combinedResult.bestCorr > overallBestCorr) {
+      overallBestCorr = combinedResult.bestCorr;
+      overallBestLag = combinedResult.bestLag;
+      overallBestBand = -1; // means combined
+    }
+
+    if (overallBestLag === 0 || overallBestCorr < 0.05) return;
+
+    this.bestBandIdx = overallBestBand;
+
+    // Re-run autocorrelation on the winning band to populate corrBuf for subharmonic check
+    const winBuf = overallBestBand >= 0 ? this.bandOsBufs[overallBestBand] : this.osBufCombined;
+    this.bandAutocorrelation(winBuf);
+
+    let bestLag = overallBestLag;
+    let bestCorr = overallBestCorr;
+
+    // Refine peak with parabolic interpolation
+    let refinedLag = bestLag;
+    if (bestLag > minLag && bestLag < maxLag) {
+      const y0 = this.corrBuf[bestLag - 1];
+      const y1 = this.corrBuf[bestLag];
+      const y2 = this.corrBuf[bestLag + 1];
+      const denom = 2 * (2 * y1 - y0 - y2);
+      if (Math.abs(denom) > 0.0001) {
+        refinedLag = bestLag + (y0 - y2) / denom;
+      }
+    }
+
+    const hopsPerSec = this.sr / this.hopSize;
+    const lagSeconds = refinedLag / hopsPerSec;
+    let bpm = 60 / lagSeconds;
+
+    // Check for strong sub-harmonic (half tempo)
+    const doubleLag = Math.round(refinedLag * 2);
+    if (doubleLag <= maxLag) {
+      const doubleCorr = this.corrBuf[doubleLag] || 0;
+      if (doubleCorr > bestCorr * 0.8) {
+        const doubleBpm = 60 / (doubleLag / hopsPerSec);
+        if (doubleBpm >= 50 && doubleBpm <= 200) {
+          bpm = doubleBpm;
+          refinedLag = doubleLag;
+          bestCorr = doubleCorr;
+        }
+      }
+    }
+
+    // Tap hint octave resolution
+    if (this.tapHintBpm > 0) {
+      const hint = this.tapHintBpm;
+      let best = bpm, bestDist = Math.abs(bpm - hint);
+      for (const m of [0.5, 2, 1/3, 3, 0.25, 4]) {
+        const c = bpm * m;
+        const d = Math.abs(c - hint);
+        if (d < bestDist && c >= 40 && c <= 250) { bestDist = d; best = c; }
+      }
+      bpm = best;
+    } else {
+      while (bpm > 170 && bpm / 2 >= 55) bpm /= 2;
+      while (bpm < 55 && bpm * 2 <= 180) bpm *= 2;
+    }
+
+    // Confidence
+    const confidence = Math.max(0, Math.min(1, bestCorr));
+
+    // Smooth BPM
+    if (this.smoothedBpm <= 0) {
+      this.smoothedBpm = bpm;
+    } else {
+      const ratio = bpm / this.smoothedBpm;
+      if (ratio > 0.95 && ratio < 1.05) {
+        this.smoothedBpm = this.smoothedBpm * 0.85 + bpm * 0.15;
+      } else if (confidence > 0.3) {
+        this.smoothedBpm = this.smoothedBpm * 0.5 + bpm * 0.5;
+      } else {
+        return;
+      }
+    }
+
+    this.tempoBpm = this.smoothedBpm;
+    this.tempoConfidence = confidence;
+    this.beatPeriodFrames = (60 / this.smoothedBpm) * hopsPerSec;
+  }
+
+  process(inputs, outputs) {
+    const input = inputs[0];
+    if (!input || !input.length || !input[0]) return true;
+
+    const inSamples = input[0];
+    const blockSize = inSamples.length;
+
+    // Write input to ring buffer
+    for (let i = 0; i < blockSize; i++) {
+      this.ringBuf[this.ringPos] = inSamples[i];
+      this.ringPos = (this.ringPos + 1) % this.ringBuf.length;
+    }
+
+    // Run analysis every hop
+    this.samplesUntilHop -= blockSize;
+    while (this.samplesUntilHop <= 0) {
+      this.samplesUntilHop += this.hopSize;
+      this.analyzeFrame();
+    }
+
+    return true;
+  }
+}
+
+registerProcessor('beat-detector-processor', BeatDetectorProcessor);
+`;
+
+    autoDetectEnabled.addEventListener('change', () => {
+      autoDetectOptions.classList.toggle('visible', autoDetectEnabled.checked);
+      if (!autoDetectEnabled.checked && detectActive) {
+        stopDetection(); // this will auto-start manual metronome if beat was locked
+      }
+      savePrefs();
+    });
+
+    autoDetectBtn.addEventListener('click', () => {
+      if (detectActive) {
+        stopDetection();
+      } else {
+        startDetection();
+      }
+    });
+
+    async function startDetection() {
+      try {
+        initAudio();
+
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        // Create the AudioWorklet from inline code (data URI for file:// compatibility)
+        if (!workletRegistered) {
+          const encoded = btoa(unescape(encodeURIComponent(workletCode)));
+          workletDataUrl = 'data:application/javascript;base64,' + encoded;
+          await audioCtx.audioWorklet.addModule(workletDataUrl);
+          workletRegistered = true;
+        }
+
+        micSource = audioCtx.createMediaStreamSource(micStream);
+        beatWorkletNode = new AudioWorkletNode(audioCtx, 'beat-detector-processor', {
+          numberOfInputs: 1,
+          numberOfOutputs: 0,
+          channelCount: 1
+        });
+
+        micSource.connect(beatWorkletNode);
+
+        // Send current fine-tune offset
+        const fineTuneMs = parseInt(document.getElementById('offsetTuneSlider').value) || 0;
+        beatWorkletNode.port.postMessage({ type: 'fineTune', ms: fineTuneMs });
+
+        // Send tap hint if available
+        if (tapHintBpm) {
+          beatWorkletNode.port.postMessage({ type: 'tapHintBpm', bpm: tapHintBpm });
+        }
+
+        // Handle messages from worklet
+        beatWorkletNode.port.onmessage = handleWorkletMessage;
+
+        // Reset detection state
+        detect.estimatedBpm = null;
+        detect.bpmConfidence = 0;
+        detect.lockedBpm = null;
+        detect.phaseOffset = 0;
+        detect.onsetRate = 0;
+        detect.beatCount = 0;
+        detect.scheduledBeats.clear();
+
+        // Stop the manual metronome timer (detection will drive beats)
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        isRunning = false;
+
+        detectActive = true;
+        autoDetectBtn.textContent = '🛑 STOP LISTENING';
+        autoDetectBtn.classList.add('active');
+        startBtn.textContent = 'STOP';
+        startBtn.classList.add('running');
+        detectStatus.innerHTML = '<span class="listening">Listening for beat...</span>';
+        updateDetectInfo();
+
+        console.log('[DETECT] AudioWorklet started, sampleRate:', audioCtx.sampleRate);
+
+      } catch (err) {
+        detectStatus.textContent = 'Error: ' + err.message;
+        console.error('Detection error:', err);
+      }
+    }
+
+    function stopDetection() {
+      const wasLocked = detect.lockedBpm > 0;
+      detectActive = false;
+
+      if (beatWorkletNode) {
+        beatWorkletNode.disconnect();
+        beatWorkletNode = null;
+      }
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+      if (micSource) {
+        micSource.disconnect();
+        micSource = null;
+      }
+
+      autoDetectBtn.textContent = '🎤 START LISTENING';
+      autoDetectBtn.classList.remove('active');
+      detectStatus.textContent = 'Stopped. Click to start listening again.';
+      confidenceFill.style.width = '0%';
+      confidenceFill.className = 'confidence-bar-fill';
+      confidenceValue.textContent = '0%';
+
+      // If we had a locked beat, transition to manual metronome at that BPM
+      if (wasLocked && !isRunning) {
+        start();
+      }
+    }
+
+    function handleWorkletMessage(e) {
+      const msg = e.data;
+
+      if (msg.type === 'onset') {
+        flashOnsetDot();
+      }
+
+      if (msg.type === 'beat') {
+        // Schedule the sound at the precise audio time from the worklet
+        if (!detectActive) return;
+
+        // Avoid scheduling duplicate beats
+        if (detect.scheduledBeats.has(msg.beatId)) return;
+        detect.scheduledBeats.add(msg.beatId);
+        // Keep set bounded
+        if (detect.scheduledBeats.size > 100) {
+          const iter = detect.scheduledBeats.values();
+          detect.scheduledBeats.delete(iter.next().value);
+        }
+
+        const beats = parseInt(timeSignature.value);
+        const beatInMeasure = detect.beatCount % beats;
+        const accent = beatInMeasure === 0;
+
+        // Schedule sound at the worklet's computed time
+        playSound(accent, msg.time);
+        updateBeatIndicator(beatInMeasure);
+        detect.beatCount++;
+
+        // Update UI state
+        if (msg.bpm > 0) {
+          if (Math.abs(msg.bpm - (detect.lockedBpm || 0)) > 0.3) {
+            detect.lockedBpm = msg.bpm;
+            setBpm(msg.bpm);
+          }
+        }
+
+        // Track that we're actively playing beats from detection
+        if (!isRunning && msg.confidence > detect.lockThreshold) {
+          isRunning = true;
+          startTime = performance.now();
+        }
+      }
+
+      if (msg.type === 'status') {
+        detect.estimatedBpm = msg.bpm > 0 ? Math.round(msg.bpm * 10) / 10 : null;
+        detect.bpmConfidence = msg.confidence;
+        detect.phaseOffset = msg.phaseOffset;
+        detect.onsetRate = msg.onsetRate;
+        detect.bestBand = msg.bestBand || '--';
+        updateDetectUI();
+      }
+    }
+
+    function flashOnsetDot() {
+      onsetDot.classList.add('flash');
+      if (onsetDotTimeout) clearTimeout(onsetDotTimeout);
+      onsetDotTimeout = setTimeout(() => {
+        onsetDot.classList.remove('flash');
+      }, 100);
+    }
+
+    // Manual beat shift (nudge buttons)
+    detect.manualShiftMs = 0;
+
+    document.getElementById('shiftLeft').addEventListener('click', () => {
+      if (!detectActive && !isRunning) return;
+      if (detectActive && beatWorkletNode) {
+        // Send tap to worklet to reset phase
+        beatWorkletNode.port.postMessage({ type: 'tap' });
+      } else {
+        const beatPeriodMs = 60000 / currentBpm;
+        detect.manualShiftMs -= beatPeriodMs;
+        nextBeatTime -= beatPeriodMs;
+      }
+    });
+
+    document.getElementById('shiftRight').addEventListener('click', () => {
+      if (!detectActive && !isRunning) return;
+      if (detectActive && beatWorkletNode) {
+        beatWorkletNode.port.postMessage({ type: 'tap' });
+      } else {
+        const beatPeriodMs = 60000 / currentBpm;
+        detect.manualShiftMs += beatPeriodMs;
+        nextBeatTime += beatPeriodMs;
+      }
+    });
+
+    // Fine-tune offset slider
+    const offsetTuneSlider = document.getElementById('offsetTuneSlider');
+    const offsetTuneValue = document.getElementById('offsetTuneValue');
+    offsetTuneSlider.addEventListener('input', () => {
+      const val = parseInt(offsetTuneSlider.value);
+      offsetTuneValue.textContent = (val >= 0 ? '+' : '') + val + 'ms';
+      // Send to worklet in real time
+      if (beatWorkletNode) {
+        beatWorkletNode.port.postMessage({ type: 'fineTune', ms: val });
+      }
+    });
+
+    function updateDetectUI() {
+      const conf = Math.round(detect.bpmConfidence * 100);
+      confidenceValue.textContent = conf + '%';
+      confidenceFill.style.width = conf + '%';
+
+      confidenceFill.className = 'confidence-bar-fill';
+      if (conf >= 50) confidenceFill.classList.add('high');
+      else if (conf >= 25) confidenceFill.classList.add('medium');
+
+      if (detect.bpmConfidence >= detect.lockThreshold && detect.lockedBpm) {
+        detectStatus.innerHTML = '<span class="locked">🔒 Locked on beat — ' + detect.lockedBpm + ' BPM</span>';
+      } else if (detect.estimatedBpm) {
+        detectStatus.innerHTML = '<span class="listening">Analyzing... ~' + detect.estimatedBpm + ' BPM</span>';
+      } else {
+        detectStatus.innerHTML = '<span class="listening">Listening for beat...</span>';
+      }
+
+      updateDetectInfo();
+    }
+
+    function updateDetectInfo() {
+      detectedBpmValue.textContent = detect.estimatedBpm ? detect.estimatedBpm : '--';
+      detectedPhaseValue.textContent = detect.phaseOffset ? detect.phaseOffset.toFixed(0) + 'ms' : '--';
+      detectedOnsetsValue.textContent = detect.onsetRate > 0 ? detect.onsetRate.toFixed(1) : '--';
+      detectedBandValue.textContent = detect.bestBand || '--';
+    }
+
+    // Add auto detect prefs to save/load
+    const origSavePrefs = savePrefs;
+    savePrefs = function() {
+      origSavePrefs();
+      try {
+        const prefs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        prefs.autoDetect = autoDetectEnabled.checked;
+        prefs.offsetTune = parseInt(offsetTuneSlider.value) || 0;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+      } catch(e) {}
+    };
+
+    const origLoadPrefs = loadPrefs;
+    loadPrefs = function() {
+      origLoadPrefs();
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const prefs = JSON.parse(stored);
+          if (prefs.autoDetect !== undefined) {
+            autoDetectEnabled.checked = prefs.autoDetect;
+            autoDetectOptions.classList.toggle('visible', prefs.autoDetect);
+          }
+          if (prefs.offsetTune !== undefined) {
+            offsetTuneSlider.value = prefs.offsetTune;
+            const val = prefs.offsetTune;
+            offsetTuneValue.textContent = (val >= 0 ? '+' : '') + val + 'ms';
+          }
+        }
+      } catch(e) {}
+    };
+
+    autoDetectEnabled.addEventListener('change', savePrefs);
+    offsetTuneSlider.addEventListener('change', savePrefs);
+
+    // Initialize
+    loadPrefs();
+    updateBeatDots();
+  </script>
+</body>
+</html>
