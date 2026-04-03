@@ -202,93 +202,91 @@ export class VDG {
         }
     }
 
-    // Graphics modes: CG (color) and RG (resolution)
-    // mode: SAM video mode 0-6
-    // gm: PIA1 graphics mode bits (GM2,GM1,GM0 from port B)
-    renderGraphics(videoBase, mode, css) {
-        // For now, implement the most common: 256×192 two-color (PMODE 4)
-        // and 128×192 four-color (PMODE 3)
-        switch (mode) {
-            case 6: // CG6: 256×192, 2 color
-                this._renderCG6(videoBase, css);
-                break;
-            case 4: // CG3: 128×192, 4 color
-                this._renderCG3(videoBase, css);
-                break;
-            case 2: // CG2: 128×96, 4 color
-                this._renderCG2(videoBase, css);
-                break;
-            default:
-                this._renderCG6(videoBase, css); // fallback
-                break;
+    // Graphics modes based on GM2,GM1,GM0 from PIA1 port B bits 6,5,4
+    // GM  Mode  Resolution  Colors  Bytes/row
+    // 0   CG1   64×64       4       16
+    // 1   RG1   128×64      2       16
+    // 2   CG2   128×64      4       32
+    // 3   RG2   128×96      2       16
+    // 4   CG3   128×96      4       16
+    // 5   RG3   128×192     2       16
+    // 6   CG6   128×192     4       32
+    // 7   RG6   256×192     2       32
+    renderGraphics(videoBase, gm, css) {
+        switch (gm) {
+            case 0: this._renderColor4(videoBase, css, 64, 64, 16); break;    // CG1
+            case 1: this._renderMono(videoBase, css, 128, 64, 16); break;     // RG1
+            case 2: this._renderColor4(videoBase, css, 128, 64, 32); break;   // CG2
+            case 3: this._renderMono(videoBase, css, 128, 96, 16); break;     // RG2
+            case 4: this._renderColor4(videoBase, css, 128, 96, 16); break;   // CG3
+            case 5: this._renderMono(videoBase, css, 128, 192, 16); break;    // RG3
+            case 6: this._renderColor4(videoBase, css, 128, 192, 32); break;  // CG6
+            case 7: this._renderMono(videoBase, css, 256, 192, 32); break;    // RG6
+            default: this._renderMono(videoBase, css, 256, 192, 32); break;
         }
     }
 
-    _renderCG6(videoBase, css) {
-        // 256×192, 1 bit per pixel, 32 bytes per row
-        const fg = css ? COLORS[4] : COLORS[0];
-        const bg = css ? COLORS[8] : COLORS[9];
-        for (let y = 0; y < 192; y++) {
-            for (let xByte = 0; xByte < 32; xByte++) {
-                const byte = this.readMemory(videoBase + y * 32 + xByte);
-                for (let bit = 0; bit < 8; bit++) {
-                    const on = !!(byte & (0x80 >> bit));
-                    const color = on ? fg : bg;
-                    const idx = (y * this.width + xByte * 8 + bit) * 4;
-                    this.pixels[idx] = color[0];
-                    this.pixels[idx + 1] = color[1];
-                    this.pixels[idx + 2] = color[2];
-                    this.pixels[idx + 3] = 255;
-                }
-            }
-        }
-    }
-
-    _renderCG3(videoBase, css) {
-        // 128×192, 2 bits per pixel, 32 bytes per row
+    // 4-color mode: 2 bits per pixel
+    _renderColor4(videoBase, css, srcW, srcH, bytesPerRow) {
         const palette = css ?
             [COLORS[4], COLORS[2], COLORS[3], COLORS[7]] :  // Buff, Blue, Red, Orange
             [COLORS[0], COLORS[1], COLORS[2], COLORS[3]];   // Green, Yellow, Blue, Red
-        for (let y = 0; y < 192; y++) {
-            for (let xByte = 0; xByte < 32; xByte++) {
-                const byte = this.readMemory(videoBase + y * 32 + xByte);
-                for (let pix = 0; pix < 4; pix++) {
+        const scaleX = this.width / srcW;
+        const scaleY = this.height / srcH;
+        const pixPerByte = 4; // 2 bits per pixel, 4 pixels per byte
+
+        for (let y = 0; y < srcH; y++) {
+            for (let xByte = 0; xByte < bytesPerRow; xByte++) {
+                const byte = this.readMemory(videoBase + y * bytesPerRow + xByte);
+                for (let pix = 0; pix < pixPerByte; pix++) {
                     const colorIdx = (byte >> (6 - pix * 2)) & 0x03;
                     const color = palette[colorIdx];
-                    const sx = (xByte * 4 + pix) * 2;
-                    const idx = (y * this.width + sx) * 4;
-                    // Double horizontal pixels (128→256)
-                    for (let dx = 0; dx < 2; dx++) {
-                        const i = idx + dx * 4;
-                        this.pixels[i] = color[0];
-                        this.pixels[i + 1] = color[1];
-                        this.pixels[i + 2] = color[2];
-                        this.pixels[i + 3] = 255;
+                    const sx = (xByte * pixPerByte + pix) * scaleX;
+                    const sy = y * scaleY;
+                    for (let dy = 0; dy < scaleY; dy++) {
+                        for (let dx = 0; dx < scaleX; dx++) {
+                            const px = Math.floor(sx + dx);
+                            const py = Math.floor(sy + dy);
+                            if (px < this.width && py < this.height) {
+                                const idx = (py * this.width + px) * 4;
+                                this.pixels[idx] = color[0];
+                                this.pixels[idx + 1] = color[1];
+                                this.pixels[idx + 2] = color[2];
+                                this.pixels[idx + 3] = 255;
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    _renderCG2(videoBase, css) {
-        // 128×96, 2 bits per pixel, 16 bytes per row, doubled vertically
-        const palette = css ?
-            [COLORS[4], COLORS[2], COLORS[3], COLORS[7]] :
-            [COLORS[0], COLORS[1], COLORS[2], COLORS[3]];
-        for (let y = 0; y < 96; y++) {
-            for (let xByte = 0; xByte < 16; xByte++) {
-                const byte = this.readMemory(videoBase + y * 16 + xByte);
-                for (let pix = 0; pix < 4; pix++) {
-                    const colorIdx = (byte >> (6 - pix * 2)) & 0x03;
-                    const color = palette[colorIdx];
-                    const sx = (xByte * 4 + pix) * 4; // quadruple horizontal
-                    for (let dy = 0; dy < 2; dy++) {
-                        for (let dx = 0; dx < 4; dx++) {
-                            const idx = ((y * 2 + dy) * this.width + sx + dx) * 4;
-                            this.pixels[idx] = color[0];
-                            this.pixels[idx + 1] = color[1];
-                            this.pixels[idx + 2] = color[2];
-                            this.pixels[idx + 3] = 255;
+    // 2-color (monochrome) mode: 1 bit per pixel
+    _renderMono(videoBase, css, srcW, srcH, bytesPerRow) {
+        const fg = css ? COLORS[4] : COLORS[0];   // Buff or Green
+        const bg = css ? COLORS[8] : COLORS[9];   // Black or Dark green
+        const scaleX = this.width / srcW;
+        const scaleY = this.height / srcH;
+
+        for (let y = 0; y < srcH; y++) {
+            for (let xByte = 0; xByte < bytesPerRow; xByte++) {
+                const byte = this.readMemory(videoBase + y * bytesPerRow + xByte);
+                for (let bit = 0; bit < 8; bit++) {
+                    const on = !!(byte & (0x80 >> bit));
+                    const color = on ? fg : bg;
+                    const sx = (xByte * 8 + bit) * scaleX;
+                    const sy = y * scaleY;
+                    for (let dy = 0; dy < scaleY; dy++) {
+                        for (let dx = 0; dx < scaleX; dx++) {
+                            const px = Math.floor(sx + dx);
+                            const py = Math.floor(sy + dy);
+                            if (px < this.width && py < this.height) {
+                                const idx = (py * this.width + px) * 4;
+                                this.pixels[idx] = color[0];
+                                this.pixels[idx + 1] = color[1];
+                                this.pixels[idx + 2] = color[2];
+                                this.pixels[idx + 3] = 255;
+                            }
                         }
                     }
                 }

@@ -101,15 +101,15 @@ export class CoCo {
     }
 
     renderFrame() {
-        // Determine video mode from PIA1 and SAM
+        // Determine video mode from PIA1 port B and SAM
         const pia1b = this.pia1.dataB;
-        const ag = !!(pia1b & 0x80);    // Alphanumeric/Graphics
-        const css = !!(pia1b & 0x08);   // Color Set Select
+        const ag = !!(pia1b & 0x80);     // bit 7: Alphanumeric/Graphics
+        const gm = (pia1b >> 4) & 0x07;  // bits 6,5,4: GM2,GM1,GM0
+        const css = !!(pia1b & 0x08);    // bit 3: Color Set Select
         const videoBase = this.sam.videoOffset;
 
         if (ag) {
-            const mode = this.sam.videoMode;
-            this.vdg.renderGraphics(videoBase, mode, css);
+            this.vdg.renderGraphics(videoBase, gm, css);
         } else {
             this.vdg.renderText(videoBase, css);
         }
