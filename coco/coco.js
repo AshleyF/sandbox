@@ -366,12 +366,21 @@ export class CoCo {
         if (this.running) return;
         this.running = true;
         this._lastFrameTime = 0;
+        this._frameCount = 0;
+        this._fpsTime = 0;
+        const fpsEl = document.getElementById('fps');
         const tick = (timestamp) => {
             if (!this.running) return;
-            // Throttle to ~60fps (16.67ms per frame)
+            // Throttle to ~60fps
             if (timestamp - this._lastFrameTime >= 16) {
                 this._lastFrameTime = timestamp;
                 this.stepFrame();
+                this._frameCount++;
+                if (timestamp - this._fpsTime >= 1000) {
+                    if (fpsEl) fpsEl.textContent = this._frameCount + ' fps';
+                    this._frameCount = 0;
+                    this._fpsTime = timestamp;
+                }
             }
             this.frameId = requestAnimationFrame(tick);
         };
