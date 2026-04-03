@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CoCo II Emulator</title>
+    <style>
+        body { background: #222; color: #0f0; font-family: monospace; text-align: center; margin: 2em; }
+        canvas { border: 2px solid #0f0; image-rendering: pixelated; background: #000; }
+        h1 { font-size: 1.4em; }
+        .controls { margin: 1em; }
+        button { font-family: monospace; padding: 0.4em 1em; margin: 0.2em; cursor: pointer; }
+        #status { margin-top: 1em; font-size: 0.9em; color: #0a0; }
+    </style>
+</head>
+<body>
+    <h1>TRS-80 Color Computer II</h1>
+    <canvas id="screen" width="256" height="192"></canvas>
+    <div class="controls">
+        <button id="loadRom">Load ROM</button>
+        <button id="reset">Reset</button>
+        <button id="run">Run</button>
+        <button id="stop">Stop</button>
+        <input type="file" id="romFile" accept=".rom,.bin" multiple style="display:none">
+    </div>
+    <div id="status">Awaiting ROM...</div>
+    <script type="module" src="coco.js"></script>
+</body>
+</html>
