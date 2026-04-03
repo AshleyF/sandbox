@@ -1152,12 +1152,18 @@ test('WAV round-trip preserves data bytes', () => {
     isTrue(found3C, 'sync byte found in decoded WAV');
 });
 
-test('Cassette readBit streams data', () => {
+test('Cassette readBit returns FSK signal level', () => {
     const c = new Cassette();
-    c.loadCAS(new Uint8Array([0xA5]).buffer); // 10100101
-    const bits = [];
-    for (let i = 0; i < 8; i++) bits.push(c.readBit());
-    eq(bits.join(''), '10100101', 'bit stream');
+    c.loadCAS(new Uint8Array([0x55]).buffer); // 01010101
+    // Motor must be on for signal to advance
+    c.setMotor(true);
+    // Initially signal is low
+    eq(c.readBit(), 0, 'initial low');
+    // Advance enough cycles for a transition (first bit is 0 → half period 373)
+    c.advanceCycles(373);
+    eq(c.readBit(), 1, 'after first half-period');
+    c.advanceCycles(373);
+    eq(c.readBit(), 0, 'after full period');
 });
 
 test('Cassette writeBit accumulates bytes', () => {

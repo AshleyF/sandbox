@@ -40,6 +40,28 @@ export class CoCo {
             return origReadPia0(offset);
         };
 
+        // Wire cassette to PIA1
+        // PIA1 port A bit 0 = cassette data input (CASSDIN)
+        // PIA1 CA2 (ctrl A bits 3-5) = cassette motor control
+        const origReadPia1 = this.pia1.read.bind(this.pia1);
+        this.pia1.read = (offset) => {
+            if (offset === 0 && (this.pia1.ctrlA & 0x04)) {
+                // Reading port A data — inject cassette bit into bit 0
+                const cassBit = this.cassette.readBit();
+                this.pia1.inputA = (this.pia1.inputA & 0xFE) | cassBit;
+            }
+            return origReadPia1(offset);
+        };
+        const origWritePia1 = this.pia1.write.bind(this.pia1);
+        this.pia1.write = (offset, val) => {
+            origWritePia1(offset, val);
+            // CA2 motor control: ctrl A bits 5,4,3 determine CA2 output
+            if (offset === 1) {
+                const ca2Out = !!(val & 0x08) && !!(val & 0x20) && !!(val & 0x10);
+                this.cassette.setMotor(ca2Out);
+            }
+        };
+
         this.cpu = new MC6809(
             addr => this.mem.read(addr),
             (addr, val) => this.mem.write(addr, val)
@@ -105,7 +127,13 @@ export class CoCo {
 
     stepFrame() {
         this.cpu.checkInterrupts();
-        this.cpu.run(CYCLES_PER_FRAME);
+        // Run cycle-by-cycle so cassette FSK signal stays in sync
+        let executed = 0;
+        while (executed < CYCLES_PER_FRAME) {
+            const c = this.cpu.step();
+            executed += c;
+            this.cassette.advanceCycles(c);
+        }
         this.renderFrame();
         this.cpu.irqLine = false;
     }

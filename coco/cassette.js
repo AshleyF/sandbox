@@ -331,6 +331,20 @@ export class Cassette {
         this.recording = false;
         this.recordBuffer = [];
         this.motorOn = false;
+
+        // FSK signal generation for ROM compatibility
+        // The ROM polls PIA1 PA0 in a tight loop counting cycles between transitions
+        // CPU clock: 894,886 Hz. At 1200 baud:
+        //   Bit 0: 1 cycle of 1200 Hz → period = 745.7 CPU cycles, half = 373
+        //   Bit 1: 2 cycles of 2400 Hz → period = 372.9 CPU cycles, half = 186
+        this.cpuCycles = 0;
+        this.signalPhase = 0;      // current position within FSK signal
+        this.signalHigh = false;   // current output level (what PIA1 PA0 reads)
+        this.halfPeriod = 373;     // current half-period in CPU cycles
+        this.cyclesInHalf = 0;     // cycles elapsed in current half-period
+
+        // Bit stream from CAS data
+        this._currentBitQueue = []; // pre-expanded to FSK half-periods
     }
 
     // Load a CAS file for playback
@@ -338,6 +352,7 @@ export class Cassette {
         this.playBuffer = new Uint8Array(data);
         this.playPos = 0;
         this.playBitPos = 0;
+        this._expandToFSK();
     }
 
     // Load a WAV file for playback (decode FSK → CAS bytes)
@@ -346,15 +361,71 @@ export class Cassette {
         this.loadCAS(casData.buffer);
     }
 
+    // Expand CAS bytes to a queue of FSK half-period durations
+    _expandToFSK() {
+        this._currentBitQueue = [];
+        if (!this.playBuffer) return;
+        const HALF_ZERO = 373;  // half-period for 0 bit (1200 Hz)
+        const HALF_ONE = 186;   // half-period for 1 bit (2400 Hz)
+
+        for (let i = 0; i < this.playBuffer.length; i++) {
+            const byte = this.playBuffer[i];
+            for (let b = 7; b >= 0; b--) {
+                if ((byte >> b) & 1) {
+                    // Bit 1: two full cycles of 2400 Hz = 4 half-periods
+                    this._currentBitQueue.push(HALF_ONE, HALF_ONE, HALF_ONE, HALF_ONE);
+                } else {
+                    // Bit 0: one full cycle of 1200 Hz = 2 half-periods
+                    this._currentBitQueue.push(HALF_ZERO, HALF_ZERO);
+                }
+            }
+        }
+        this._queuePos = 0;
+        this.cyclesInHalf = 0;
+        this.signalHigh = false;
+        if (this._currentBitQueue.length > 0) {
+            this.halfPeriod = this._currentBitQueue[0];
+        }
+    }
+
+    // Advance the FSK signal by 'n' CPU cycles
+    // Call this from the main loop each step
+    advanceCycles(n) {
+        if (!this.motorOn || this._currentBitQueue.length === 0) return;
+        if (this._queuePos >= this._currentBitQueue.length) return;
+
+        this.cyclesInHalf += n;
+        while (this.cyclesInHalf >= this.halfPeriod) {
+            this.cyclesInHalf -= this.halfPeriod;
+            this.signalHigh = !this.signalHigh;
+            this._queuePos++;
+            if (this._queuePos < this._currentBitQueue.length) {
+                this.halfPeriod = this._currentBitQueue[this._queuePos];
+            } else {
+                break; // end of tape
+            }
+        }
+    }
+
+    // Called by PIA1 to read cassette signal level (port A bit 0)
+    readBit() {
+        return this.signalHigh ? 1 : 0;
+    }
+
     // Start recording
     startRecording() {
         this.recording = true;
         this.recordBuffer = [];
+        this._lastInputLevel = 0;
+        this._cyclesSinceTransition = 0;
+        this._recordBits = [];
     }
 
     // Stop recording and return CAS data
     stopRecording() {
         this.recording = false;
+        // Flush any remaining bits to bytes
+        this._flushRecordBits();
         return new Uint8Array(this.recordBuffer);
     }
 
@@ -364,23 +435,59 @@ export class Cassette {
         return casToWAV(casData);
     }
 
-    // Called by PIA1 to read cassette data bit (port A bit 0)
-    readBit() {
-        if (!this.playBuffer || this.playPos >= this.playBuffer.length) return 0;
-        const byte = this.playBuffer[this.playPos];
-        const bit = (byte >> (7 - this.playBitPos)) & 1;
-        this.playBitPos++;
-        if (this.playBitPos >= 8) {
-            this.playBitPos = 0;
-            this.playPos++;
+    // Called each CPU cycle during recording to sample the output
+    recordSample(outputBit) {
+        if (!this.recording) return;
+        this._cyclesSinceTransition++;
+        if (outputBit !== this._lastInputLevel) {
+            // Transition detected — classify the half-period
+            const THRESHOLD = 280; // midpoint between 186 and 373
+            if (this._cyclesSinceTransition > THRESHOLD) {
+                // Long half-period → part of a 0 bit
+                this._recordHalf(0);
+            } else {
+                // Short half-period → part of a 1 bit
+                this._recordHalf(1);
+            }
+            this._cyclesSinceTransition = 0;
+            this._lastInputLevel = outputBit;
         }
-        return bit;
     }
 
-    // Called by PIA1 to write cassette data bit
+    _recordHalf(type) {
+        if (!this._halfCount) this._halfCount = 0;
+        if (!this._halfType) this._halfType = type;
+
+        this._halfCount++;
+        if (type === 0 && this._halfCount >= 2) {
+            // Two long halves = one 0 bit
+            this._recordBits.push(0);
+            this._halfCount = 0;
+        } else if (type === 1 && this._halfCount >= 4) {
+            // Four short halves = one 1 bit
+            this._recordBits.push(1);
+            this._halfCount = 0;
+        }
+
+        // Flush bits to bytes
+        if (this._recordBits.length >= 8) {
+            this._flushRecordBits();
+        }
+    }
+
+    _flushRecordBits() {
+        while (this._recordBits && this._recordBits.length >= 8) {
+            let byte = 0;
+            for (let i = 0; i < 8; i++) {
+                byte = (byte << 1) | this._recordBits.shift();
+            }
+            this.recordBuffer.push(byte);
+        }
+    }
+
+    // Called by PIA1 to write cassette data bit (for recording)
     writeBit(bit) {
         if (!this.recording) return;
-        // Accumulate bits into bytes
         if (!this._writeByte) this._writeByte = 0;
         if (!this._writeBitCount) this._writeBitCount = 0;
         this._writeByte = (this._writeByte << 1) | (bit ? 1 : 0);
@@ -392,14 +499,14 @@ export class Cassette {
         }
     }
 
-    // Motor control (PIA1 port B bit 3)
+    // Motor control (PIA1 CA2)
     setMotor(on) {
         this.motorOn = on;
     }
 
     // Get playback progress
     get progress() {
-        if (!this.playBuffer || this.playBuffer.length === 0) return 0;
-        return this.playPos / this.playBuffer.length;
+        if (!this._currentBitQueue || this._currentBitQueue.length === 0) return 0;
+        return this._queuePos / this._currentBitQueue.length;
     }
 }
