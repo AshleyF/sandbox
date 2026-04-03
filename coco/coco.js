@@ -173,10 +173,13 @@ export class CoCo {
         }
 
         // Signal VSYNC via PIA0 CB1 (falling edge — CoCo FS1 is on CB1)
-        this.pia0.setCB1(false);  // falling edge sets irqB1 flag
+        this.pia0.setCB1(false);
         if (this.pia0.irqActive) {
             this.cpu.irqLine = true;
         }
+
+        // Flush sound samples to Web Audio
+        this.sound.flush();
     }
 
     stepFrame() {
