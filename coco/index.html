@@ -17,12 +17,15 @@
     <canvas id="screen" width="256" height="192"></canvas>
     <div class="controls">
         <button id="loadRom">Load ROM</button>
+        <button id="testRom">Test ROM</button>
         <button id="reset">Reset</button>
         <button id="run">Run</button>
         <button id="stop">Stop</button>
+        <button id="step">Step</button>
         <input type="file" id="romFile" accept=".rom,.bin" multiple style="display:none">
     </div>
     <div id="status">Awaiting ROM...</div>
+    <pre id="debug" style="text-align:left;display:inline-block;font-size:11px;color:#0a0;margin-top:1em;"></pre>
     <script type="module" src="coco.js"></script>
 </body>
 </html>

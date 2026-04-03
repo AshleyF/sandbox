@@ -33,9 +33,10 @@ export class Memory {
         if (addr >= 0xA000 && addr <= 0xBFFF && this.rom) {
             return this.rom[addr - 0xA000];
         }
-        // Interrupt vectors come from ROM
+        // Interrupt vectors come from ROM (mirrored — top of 8K BASIC ROM)
         if (addr >= 0xFFF0 && addr <= 0xFFFF && this.rom) {
-            return this.rom[addr - 0xA000];
+            // Vectors are at the end of the 8K ROM: offset = addr & 0x1FFF
+            return this.rom[addr & 0x1FFF];
         }
         return this.ram[addr];
     }

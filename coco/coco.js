@@ -8,6 +8,7 @@ import { SAM } from './sam.js';
 import { VDG } from './vdg.js';
 import { Keyboard } from './keyboard.js';
 import { Debugger } from './debug.js';
+import { makeTestROM } from './testrom.js';
 
 const CYCLES_PER_FRAME = 14914; // ~894,886 Hz / 60 fps
 
@@ -156,6 +157,7 @@ document.getElementById('romFile')?.addEventListener('change', async (e) => {
 
 document.getElementById('reset')?.addEventListener('click', () => {
     coco.reset();
+    updateDebug();
     status.textContent = `Reset. PC=${coco.cpu.pc.toString(16).toUpperCase().padStart(4, '0')}`;
 });
 
@@ -166,5 +168,33 @@ document.getElementById('run')?.addEventListener('click', () => {
 
 document.getElementById('stop')?.addEventListener('click', () => {
     coco.stop();
+    updateDebug();
     status.textContent = `Stopped. ${coco.dbg.dumpRegisters().split('\n')[0]}`;
 });
+
+document.getElementById('testRom')?.addEventListener('click', () => {
+    const { rom, extrom } = makeTestROM();
+    coco.mem.loadROM(rom, 0xA000);
+    coco.mem.loadROM(extrom, 0x8000);
+    coco.reset();
+    updateDebug();
+    status.textContent = `Test ROM loaded. PC=${coco.cpu.pc.toString(16).toUpperCase().padStart(4, '0')}. Click Run!`;
+});
+
+document.getElementById('step')?.addEventListener('click', () => {
+    coco.stop();
+    const entry = coco.dbg.stepDebug();
+    coco.renderFrame();
+    updateDebug();
+    status.textContent = `${entry.instruction} [${entry.cycles}c]`;
+});
+
+const debugEl = document.getElementById('debug');
+function updateDebug() {
+    if (!debugEl) return;
+    const regs = coco.dbg.dumpRegisters();
+    const dis = coco.dbg.disassemble(coco.cpu.pc, 8)
+        .map(d => `${d.addr.toString(16).toUpperCase().padStart(4, '0')} ${d.hex.padEnd(14)} ${d.text}`)
+        .join('\n');
+    debugEl.textContent = regs + '\n\n' + dis;
+}
