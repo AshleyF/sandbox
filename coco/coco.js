@@ -152,10 +152,19 @@ export class CoCo {
 
             // ROM intercept: byte-OUT at $A82A (CSAVE writes)
             if (this.cassette.interceptEnabled && this.cassette.recording && pc === 0xA82A) {
-                // A register has the byte to write
                 this.cassette.recordBuffer.push(this.cpu.a);
-                this.cpu.pc = 0xA85A; // skip to PULS A,PC
+                this.cpu.step(); // PSHS A
+                this.cpu.pc = 0xA85A; // PULS A,PC
                 executed += 84;
+                continue;
+            }
+
+            // Speed up motor delay loop at $A7D3: LEAX -1,X; BNE $A7D3
+            if (this.cassette.interceptEnabled && pc === 0xA7D3 &&
+                (this.cassette.motorOn || this.cassette.recording)) {
+                this.cpu.x = 0;
+                this.cpu.pc = 0xA7D5; // skip past BNE
+                executed += 100;
                 continue;
             }
 
