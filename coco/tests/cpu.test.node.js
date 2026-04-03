@@ -1,6 +1,11 @@
 // Node.js test runner — runs the same tests without a browser
 import { MC6809 } from '../cpu.js';
 import { Debugger } from '../debug.js';
+import { PIA } from '../pia.js';
+import { SAM } from '../sam.js';
+import { Keyboard } from '../keyboard.js';
+import { VDG } from '../vdg.js';
+import { Memory } from '../memory.js';
 
 // Minimal test framework (same API as run.js but for Node)
 let _passed = 0, _failed = 0, _errors = [], _currentSuite = '';
@@ -703,6 +708,262 @@ test('Trace log', () => {
     dbg.stepDebug(); dbg.stepDebug();
     eq(dbg.traceLog.length, 2, 'entries');
     eq(dbg.traceLog[0].instruction, 'LDA #$42', 'first');
+});
+
+// ===================================================================
+// PIA Tests
+// ===================================================================
+suite('PIA');
+
+test('PIA DDR write and read', () => {
+    const pia = new PIA();
+    // Ctrl bit 2 = 0 means accessing DDR
+    pia.write(1, 0x00); // ctrlA, bit 2 clear
+    pia.write(0, 0xFF); // set all bits as output
+    eq(pia.read(0), 0xFF, 'DDR');
+});
+
+test('PIA data register write/read', () => {
+    const pia = new PIA();
+    pia.write(1, 0x04); // ctrlA bit 2 set → data register
+    pia.write(0, 0xFF); // ddrA still 0 → all inputs
+    pia.write(0, 0x42); // write to data register
+    // But ddrA=0 means all inputs, so reading gives inputA
+    pia.inputA = 0x55;
+    eq(pia.read(0), 0x55, 'reads input when DDR=0');
+});
+
+test('PIA output bits', () => {
+    const pia = new PIA();
+    // Set DDR
+    pia.write(1, 0x00); // access DDR
+    pia.write(0, 0xF0); // upper 4 bits output, lower 4 input
+    // Set data
+    pia.write(1, 0x04); // access data register
+    pia.write(0, 0xA0); // output $A0 on upper bits
+    pia.inputA = 0x05;  // input $05 on lower bits
+    eq(pia.read(0), 0xA5, 'mixed output/input');
+});
+
+test('PIA control register', () => {
+    const pia = new PIA();
+    pia.write(1, 0x3F);
+    eq(pia.read(1) & 0x3F, 0x3F, 'ctrl bits');
+});
+
+test('PIA IRQ flag in control register', () => {
+    const pia = new PIA();
+    pia.write(1, 0x07); // CA1 rising edge, IRQ enabled, data register access
+    pia.setCA1(true);
+    isTrue(!!(pia.read(1) & 0x80), 'IRQ flag set');
+    isTrue(pia.irqActive, 'IRQ active');
+});
+
+test('PIA IRQ flag clears on data read', () => {
+    const pia = new PIA();
+    pia.write(1, 0x07); // enable IRQ, rising edge, data register
+    pia.setCA1(true);
+    isTrue(!!(pia.read(1) & 0x80), 'flag set');
+    pia.read(0); // reading data clears flag
+    isFalse(!!(pia.read(1) & 0x80), 'flag cleared');
+});
+
+test('PIA side B works independently', () => {
+    const pia = new PIA();
+    pia.write(3, 0x00); // access DDR B
+    pia.write(2, 0xFF); // all outputs
+    pia.write(3, 0x04); // access data B
+    pia.write(2, 0x42);
+    eq(pia.read(2), 0x42, 'port B output');
+});
+
+// ===================================================================
+// SAM Tests
+// ===================================================================
+suite('SAM');
+
+test('SAM set/clear bits', () => {
+    const sam = new SAM();
+    sam.write(0xFFC1); // set bit 0
+    eq(sam.bits & 1, 1, 'bit 0 set');
+    sam.write(0xFFC0); // clear bit 0
+    eq(sam.bits & 1, 0, 'bit 0 clear');
+});
+
+test('SAM video mode bits', () => {
+    const sam = new SAM();
+    sam.write(0xFFC1); // V0 set
+    sam.write(0xFFC3); // V1 set
+    sam.write(0xFFC4); // V2 clear
+    eq(sam.videoMode, 3, 'mode 3');
+});
+
+test('SAM video offset', () => {
+    const sam = new SAM();
+    // Set F1 (bit 4) → offset = 0x200 * 2 = 0x400 (default text screen)
+    sam.write(0xFFC9); // set bit 4 (F1)
+    eq(sam.videoOffset, 0x0200 * 2, 'offset $0400');
+});
+
+test('SAM all video offset bits', () => {
+    const sam = new SAM();
+    // F0-F6 = bits 3-9, set F0 (bit 3)
+    sam.write(0xFFC7); // set bit 3 (F0)
+    eq(sam.videoOffset, 0x0200, 'offset $0200');
+});
+
+test('SAM memory size', () => {
+    const sam = new SAM();
+    sam.write(0xFFD9); // set bit 12 (M0)
+    eq(sam.memorySize, 1, 'mem size 1');
+});
+
+// ===================================================================
+// Keyboard Tests
+// ===================================================================
+suite('Keyboard');
+
+test('No keys pressed returns all high', () => {
+    const kb = new Keyboard();
+    eq(kb.readRows(0x00), 0x7F, 'all rows high');
+});
+
+test('Key A press detected', () => {
+    const kb = new Keyboard();
+    kb.keyDown({ key: 'a', preventDefault: () => {} });
+    // A is row 0, col 1. Select col 1 (bit 1 low → colSelect with bit 1 = 0)
+    const rows = kb.readRows(0xFD); // all cols high except col 1
+    eq(rows & 0x01, 0x00, 'row 0 low (A pressed)');
+});
+
+test('Key A release clears', () => {
+    const kb = new Keyboard();
+    const evt = { key: 'a', preventDefault: () => {} };
+    kb.keyDown(evt);
+    kb.keyUp(evt);
+    const rows = kb.readRows(0xFD);
+    eq(rows & 0x01, 0x01, 'row 0 high (A released)');
+});
+
+test('Multiple keys in different columns', () => {
+    const kb = new Keyboard();
+    kb.keyDown({ key: 'a', preventDefault: () => {} }); // row 0, col 1
+    kb.keyDown({ key: '1', preventDefault: () => {} }); // row 4, col 1
+    const rows = kb.readRows(0xFD); // col 1 selected
+    eq(rows & 0x01, 0x00, 'row 0 low (A)');
+    eq(rows & 0x10, 0x00, 'row 4 low (1)');
+});
+
+test('Space key', () => {
+    const kb = new Keyboard();
+    kb.keyDown({ key: ' ', preventDefault: () => {} }); // row 3, col 7
+    const rows = kb.readRows(0x7F); // col 7 selected
+    eq(rows & 0x08, 0x00, 'row 3 low (space)');
+});
+
+test('Enter key', () => {
+    const kb = new Keyboard();
+    kb.keyDown({ key: 'Enter', preventDefault: () => {} }); // row 6, col 0
+    const rows = kb.readRows(0xFE); // col 0 selected
+    eq(rows & 0x40, 0x00, 'row 6 low (enter)');
+});
+
+test('Unscanned columns return all high', () => {
+    const kb = new Keyboard();
+    kb.keyDown({ key: 'a', preventDefault: () => {} }); // col 1
+    const rows = kb.readRows(0xFF); // no columns selected
+    eq(rows, 0x7F, 'all rows high');
+});
+
+// ===================================================================
+// VDG Tests
+// ===================================================================
+suite('VDG');
+
+test('VDG creates correct size framebuffer', () => {
+    const vdg = new VDG(() => 0);
+    eq(vdg.pixels.length, 256 * 192 * 4, 'buffer size');
+});
+
+test('VDG renders text with space characters', () => {
+    // CoCo default screen is $60 chars (inverse spaces — display as green blocks)
+    // Use $20 (internal space, non-inverse) for a clean background
+    const mem = new Uint8Array(0x10000);
+    for (let i = 0x0400; i < 0x0600; i++) mem[i] = 0x20; // space, non-inverse
+    const vdg = new VDG(addr => mem[addr]);
+    vdg.renderText(0x0400, false);
+    // Background of space char in green text mode = dark green (0,64,0)
+    eq(vdg.pixels[0], 0, 'bg R');
+    eq(vdg.pixels[1], 0x40, 'bg G');
+    eq(vdg.pixels[2], 0, 'bg B');
+    eq(vdg.pixels[3], 255, 'alpha');
+});
+
+test('VDG renders character with foreground pixels', () => {
+    const mem = new Uint8Array(0x10000);
+    mem[0x0400] = 0x01; // Character A (internal code)
+    for (let i = 0x0401; i < 0x0600; i++) mem[i] = 0x20; // spaces
+    const vdg = new VDG(addr => mem[addr]);
+    vdg.renderText(0x0400, false);
+    // Character A has pixels set in its pattern
+    // Row 2 (first data row) of A: 0x20 (00100000) — pixel at x=2
+    const py = 2; // top margin rows
+    const px = 2; // bit 5 = column 2
+    const idx = (py * 256 + px) * 4;
+    eq(vdg.pixels[idx], 0, 'fg R (green)');
+    eq(vdg.pixels[idx + 1], 0xFF, 'fg G');
+});
+
+test('VDG semigraphics-4 renders colored blocks', () => {
+    const mem = new Uint8Array(0x10000);
+    mem[0x0400] = 0x8F; // SG4: color=0 (green), all 4 blocks on
+    const vdg = new VDG(addr => mem[addr]);
+    vdg.renderText(0x0400, false);
+    // Top-left pixel should be green (color 0)
+    eq(vdg.pixels[0], 0, 'R');
+    eq(vdg.pixels[1], 0xFF, 'G');
+    eq(vdg.pixels[2], 0, 'B');
+});
+
+// ===================================================================
+// Memory Integration Tests
+// ===================================================================
+suite('Memory Integration');
+
+test('Memory routes PIA0 reads', () => {
+    const mem = new Memory();
+    mem.pia0 = new PIA();
+    mem.pia0.write(1, 0x04); // access data register
+    mem.pia0.inputA = 0x42;
+    eq(mem.read(0xFF00), 0x42, 'PIA0 port A');
+});
+
+test('Memory routes PIA1 writes', () => {
+    const mem = new Memory();
+    mem.pia1 = new PIA();
+    mem.write(0xFF23, 0x04); // ctrlB
+    mem.write(0xFF22, 0x55); // dataB
+    eq(mem.pia1.dataB, 0x55, 'PIA1 port B');
+});
+
+test('Memory routes SAM writes', () => {
+    const mem = new Memory();
+    mem.sam = new SAM();
+    mem.write(0xFFC1, 0x00); // set bit 0
+    eq(mem.sam.bits & 1, 1, 'SAM bit 0');
+});
+
+test('ROM is read-only', () => {
+    const mem = new Memory();
+    mem.loadROM(new Uint8Array([0x42]), 0xA000);
+    mem.write(0xA000, 0xFF); // attempt to write
+    eq(mem.read(0xA000), 0x42, 'ROM unchanged');
+});
+
+test('RAM read/write', () => {
+    const mem = new Memory();
+    mem.write(0x1000, 0x42);
+    eq(mem.read(0x1000), 0x42, 'RAM');
 });
 
 summary();
