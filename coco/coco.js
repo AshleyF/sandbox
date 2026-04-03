@@ -409,13 +409,13 @@ const canvas = document.getElementById('screen');
 if (canvas) coco.setCanvas(canvas);
 
 // Keyboard and joystick events
-// Arrow keys go to joystick, other keys to keyboard
+// Arrow keys go to BOTH joystick and keyboard, other keys to keyboard only
 document.addEventListener('keydown', (e) => {
-    if (coco.joystick.keyDown(e)) { e.preventDefault(); return; }
+    coco.joystick.keyDown(e);  // always send to joystick (it ignores non-arrow keys)
     if (coco.keyboard.keyDown(e)) e.preventDefault();
 });
 document.addEventListener('keyup', (e) => {
-    if (coco.joystick.keyUp(e)) { e.preventDefault(); return; }
+    coco.joystick.keyUp(e);
     if (coco.keyboard.keyUp(e)) e.preventDefault();
 });
 // Clear all keys when window loses focus (prevents stuck keys)
