@@ -966,4 +966,84 @@ test('RAM read/write', () => {
     eq(mem.read(0x1000), 0x42, 'RAM');
 });
 
+// ===================================================================
+// System Integration Tests
+// ===================================================================
+suite('System Integration');
+
+test('CPU reads/writes through memory bus to PIA', () => {
+    const mem = new Memory();
+    mem.pia0 = new PIA();
+    const cpu = new MC6809(addr => mem.read(addr), (addr, val) => mem.write(addr, val));
+    // LDA #$04; STA $FF01 (set PIA0 ctrlA)
+    mem.loadBytes(0x0000, [0x86, 0x04, 0xB7, 0xFF, 0x01]);
+    cpu.pc = 0x0000;
+    cpu.step(); cpu.step();
+    eq(mem.pia0.ctrlA & 0x3F, 0x04, 'PIA0 ctrlA via CPU');
+});
+
+test('CPU reads keyboard via PIA0', () => {
+    const mem = new Memory();
+    const pia0 = new PIA();
+    const kb = new Keyboard();
+    mem.pia0 = pia0;
+
+    // Setup PIA0: port A = all inputs, port B = all outputs
+    pia0.write(1, 0x00); pia0.write(0, 0x00); // DDR A = all input
+    pia0.write(1, 0x04); // access data register A
+    pia0.write(3, 0x00); pia0.write(2, 0xFF); // DDR B = all output
+    pia0.write(3, 0x04); // access data register B
+
+    // Press 'A' key (row 0, col 1)
+    kb.keyDown({ key: 'a', preventDefault: () => {} });
+
+    // Select column 1 via port B
+    pia0.write(2, 0xFD); // col 1 active low
+    pia0.inputA = kb.readRows(pia0.dataB);
+
+    // CPU reads port A
+    const cpu = new MC6809(addr => mem.read(addr), (addr, val) => mem.write(addr, val));
+    mem.loadBytes(0x0000, [0xB6, 0xFF, 0x00]); // LDA $FF00
+    cpu.pc = 0x0000;
+    cpu.step();
+    eq(cpu.a & 0x01, 0x00, 'row 0 low (A key pressed)');
+});
+
+test('CPU writes SAM video registers', () => {
+    const mem = new Memory();
+    mem.sam = new SAM();
+    const cpu = new MC6809(addr => mem.read(addr), (addr, val) => mem.write(addr, val));
+    // STA $FFC1 (set SAM bit 0)
+    mem.loadBytes(0x0000, [0xB7, 0xFF, 0xC1]);
+    cpu.pc = 0x0000;
+    cpu.step();
+    eq(mem.sam.bits & 1, 1, 'SAM bit 0 set');
+});
+
+test('Full render pipeline: CPU writes screen mem, VDG reads it', () => {
+    const mem = new Memory();
+    mem.sam = new SAM();
+    const vdg = new VDG(addr => mem.read(addr));
+    const cpu = new MC6809(addr => mem.read(addr), (addr, val) => mem.write(addr, val));
+
+    // Write character 'A' (internal code $01) to screen position $0400
+    mem.loadBytes(0x0000, [
+        0x86, 0x01,             // LDA #$01 (char A)
+        0xB7, 0x04, 0x00,      // STA $0400
+    ]);
+    cpu.pc = 0x0000;
+    cpu.step(); cpu.step();
+
+    // Now render text — SAM default offset is 0, but screen at $0400 needs F1 set
+    // Actually for test simplicity, render from $0400 directly
+    vdg.renderText(0x0400, false);
+
+    // Check that character A was rendered (has non-background pixels)
+    // Row 2 of A char = 0x20 → bit at x=2 should be green foreground
+    const py = 2;
+    const px = 2;
+    const idx = (py * 256 + px) * 4;
+    eq(vdg.pixels[idx + 1], 0xFF, 'green pixel from char A');
+});
+
 summary();
