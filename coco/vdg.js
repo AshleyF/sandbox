@@ -119,6 +119,7 @@ export class VDG {
         this.width = 256;
         this.height = 192;
         this.pixels = new Uint8Array(this.width * this.height * 4); // RGBA
+        this.artifactColors = true; // enable NTSC artifact color simulation
     }
 
     // Render text mode: 32 columns × 16 rows, 8×12 character cells
@@ -221,7 +222,13 @@ export class VDG {
             case 4: this._renderColor4(videoBase, css, 128, 96, 16); break;   // CG3
             case 5: this._renderMono(videoBase, css, 128, 192, 16); break;    // RG3
             case 6: this._renderColor4(videoBase, css, 128, 192, 32); break;  // CG6
-            case 7: this._renderMono(videoBase, css, 256, 192, 32); break;    // RG6
+            case 7: // RG6 — 256×192, 2 color with NTSC artifact colors
+                if (this.artifactColors) {
+                    this._renderArtifact(videoBase, css, 32);
+                } else {
+                    this._renderMono(videoBase, css, 256, 192, 32);
+                }
+                break;
             default: this._renderMono(videoBase, css, 256, 192, 32); break;
         }
     }
@@ -288,6 +295,47 @@ export class VDG {
                                 this.pixels[idx + 3] = 255;
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    // NTSC artifact color rendering for RG6 (256×192 PMODE 4)
+    // Adjacent pixel pairs create colors due to NTSC chroma phase
+    // Pair patterns: 00=black, 01=blue/orange, 10=orange/blue, 11=white
+    // Which color depends on even/odd column position (NTSC phase)
+    _renderArtifact(videoBase, css, bytesPerRow) {
+        // Two artifact color sets (toggled by CSS or screen position)
+        const artifactSet1 = [
+            COLORS[8],  // 00 = black
+            COLORS[2],  // 01 = blue
+            COLORS[7],  // 10 = orange
+            COLORS[4],  // 11 = white/buff
+        ];
+        const artifactSet2 = [
+            COLORS[8],  // 00 = black
+            COLORS[7],  // 01 = orange
+            COLORS[2],  // 10 = blue
+            COLORS[4],  // 11 = white/buff
+        ];
+        const palette = css ? artifactSet2 : artifactSet1;
+
+        for (let y = 0; y < 192; y++) {
+            for (let xByte = 0; xByte < bytesPerRow; xByte++) {
+                const byte = this.readMemory(videoBase + y * bytesPerRow + xByte);
+                // Process pixel pairs (4 pairs per byte)
+                for (let pair = 0; pair < 4; pair++) {
+                    const bits = (byte >> (6 - pair * 2)) & 0x03;
+                    const color = palette[bits];
+                    const px = xByte * 8 + pair * 2;
+                    // Each artifact pixel pair maps to 2 output pixels
+                    for (let dx = 0; dx < 2; dx++) {
+                        const idx = (y * this.width + px + dx) * 4;
+                        this.pixels[idx] = color[0];
+                        this.pixels[idx + 1] = color[1];
+                        this.pixels[idx + 2] = color[2];
+                        this.pixels[idx + 3] = 255;
                     }
                 }
             }
