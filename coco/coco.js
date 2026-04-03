@@ -365,12 +365,17 @@ export class CoCo {
     start() {
         if (this.running) return;
         this.running = true;
-        const tick = () => {
+        this._lastFrameTime = 0;
+        const tick = (timestamp) => {
             if (!this.running) return;
-            this.stepFrame();
+            // Throttle to ~60fps (16.67ms per frame)
+            if (timestamp - this._lastFrameTime >= 16) {
+                this._lastFrameTime = timestamp;
+                this.stepFrame();
+            }
             this.frameId = requestAnimationFrame(tick);
         };
-        tick();
+        requestAnimationFrame(tick);
     }
 
     stop() {
