@@ -27,8 +27,12 @@
         <button id="recordTape" title="Arm for recording, then type CSAVE">⏺ Record</button>
         <button id="saveTapeCAS">Save CAS</button>
         <button id="saveTapeWAV">Save WAV</button>
+        <span style="color:#555;margin:0 0.5em;">│</span>
+        <button id="loadCart">Load Cart</button>
+        <button id="ejectCart">Eject Cart</button>
         <input type="file" id="romFile" accept=".rom,.bin" multiple style="display:none">
         <input type="file" id="tapeFile" accept=".cas,.wav,.c10" style="display:none">
+        <input type="file" id="cartFile" accept=".rom,.bin,.ccc" style="display:none">
     </div>
     <div id="status">Awaiting ROM...</div>
     <div style="display:flex;justify-content:center;gap:2em;margin-top:0.5em;">

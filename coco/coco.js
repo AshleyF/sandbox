@@ -122,8 +122,23 @@ export class CoCo {
         }
     }
 
+    loadCartridge(data) {
+        this.mem.loadCartridge(data);
+    }
+
+    removeCartridge() {
+        this.mem.removeCartridge();
+    }
+
     reset() {
         this.cpu.reset();
+        // Cartridge autostart: assert FIRQ and set PIA1 CB1 flag
+        // BASIC's FIRQ handler checks PIA1 $FF23 bit 7 (CB1 IRQ flag)
+        // and jumps to $C000 if set
+        if (this.mem.cartrom) {
+            this.pia1.irqB1 = true;   // set CART flag in PIA1 ctrl B
+            this.cpu.firqLine = true;  // assert FIRQ line
+        }
     }
 
     renderFrame() {
@@ -158,10 +173,15 @@ export class CoCo {
     }
 
     stepFrame() {
-        this.cpu.checkInterrupts();
         this.joystick.update();
         let executed = 0;
         while (executed < CYCLES_PER_FRAME) {
+            // Keep CART signal active while cartridge is present
+            if (this.mem.cartrom) {
+                this.pia1.irqB1 = true;
+                this.cpu.firqLine = true;
+            }
+            this.cpu.checkInterrupts();
             const pc = this.cpu.pc;
 
             // ROM intercept: CSRDON (cassette sync) at $A77C
@@ -623,3 +643,29 @@ function downloadBlob(blob, filename) {
     a.click();
     URL.revokeObjectURL(url);
 }
+
+// === Cartridge UI ===
+document.getElementById('loadCart')?.addEventListener('click', () => {
+    document.getElementById('cartFile')?.click();
+});
+
+document.getElementById('cartFile')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const data = new Uint8Array(await file.arrayBuffer());
+    coco.loadCartridge(data);
+    coco.stop();
+    coco.reset();
+    coco.start();
+    startTapeStatus();
+    status.textContent = `Cartridge loaded: ${file.name} (${data.length} bytes) — auto-starting`;
+});
+
+document.getElementById('ejectCart')?.addEventListener('click', () => {
+    coco.removeCartridge();
+    coco.stop();
+    coco.reset();
+    coco.start();
+    startTapeStatus();
+    status.textContent = 'Cartridge ejected. Rebooted to BASIC.';
+});

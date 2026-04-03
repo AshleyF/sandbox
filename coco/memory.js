@@ -6,9 +6,10 @@ export class Memory {
         this.ram = new Uint8Array(0x10000); // 64K
         this.rom = null;     // Color BASIC ROM (8K at $A000-$BFFF)
         this.extrom = null;  // Extended BASIC ROM (8K at $8000-$9FFF)
-        this.pia0 = null;    // PIA 0 ($FF00-$FF03)
-        this.pia1 = null;    // PIA 1 ($FF20-$FF23)
-        this.sam = null;     // SAM ($FFC0-$FFDF)
+        this.cartrom = null; // Cartridge ROM (up to 16K at $C000-$FFEF)
+        this.pia0 = null;
+        this.pia1 = null;
+        this.sam = null;
     }
 
     read(addr) {
@@ -25,6 +26,11 @@ export class Memory {
         if (addr >= 0xFFC0 && addr <= 0xFFDF) {
             return 0xFF;
         }
+        // Cartridge ROM ($C000-$FFEF)
+        if (addr >= 0xC000 && addr <= 0xFEFF && this.cartrom) {
+            const offset = addr - 0xC000;
+            if (offset < this.cartrom.length) return this.cartrom[offset];
+        }
         // Extended BASIC ROM
         if (addr >= 0x8000 && addr <= 0x9FFF && this.extrom) {
             return this.extrom[addr - 0x8000];
@@ -35,7 +41,6 @@ export class Memory {
         }
         // Interrupt vectors come from ROM (mirrored — top of 8K BASIC ROM)
         if (addr >= 0xFFF0 && addr <= 0xFFFF && this.rom) {
-            // Vectors are at the end of the 8K ROM: offset = addr & 0x1FFF
             return this.rom[addr & 0x1FFF];
         }
         return this.ram[addr];
@@ -61,6 +66,7 @@ export class Memory {
         }
         // ROM areas are read-only
         if (addr >= 0x8000 && addr <= 0xBFFF) return;
+        if (addr >= 0xC000 && addr <= 0xFEFF && this.cartrom) return;
         if (addr >= 0xFFF0) return;
         this.ram[addr] = val;
     }
@@ -68,6 +74,14 @@ export class Memory {
     loadROM(data, base) {
         if (base === 0xA000) this.rom = new Uint8Array(data);
         else if (base === 0x8000) this.extrom = new Uint8Array(data);
+    }
+
+    loadCartridge(data) {
+        this.cartrom = new Uint8Array(data);
+    }
+
+    removeCartridge() {
+        this.cartrom = null;
     }
 
     // Load raw bytes into RAM (for testing)
