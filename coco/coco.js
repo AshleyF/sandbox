@@ -340,18 +340,22 @@ export class CoCo {
             if (this.cassette.motorOn || this.cassette.recording || this.mem.cartrom) {
                 // $A7D8: WRLDR — write leader + data. Skip entirely.
                 if (pc === 0xA7D8) { cpu.pc = 0xA7E4; executed += 100; continue; }
-                // $A7CA: CASON — motor on + delay. Skip delay.
+                // $A7CA: CASON — motor on + delay. Skip delay but charge real cycle cost.
                 if (pc === 0xA7CA) {
                     const val = this.mem.read(0xFF21) | 0x08;
                     this.mem.write(0xFF21, val);
-                    this.cpu.pc = 0xA7D7; executed += 100; continue;
+                    this.cpu.pc = 0xA7D7; executed += 5000; continue;
                 }
-                // $A7D3: LEAX -1,X; BNE (delay loop). Skip.
-                if (pc === 0xA7D3) { this.cpu.x = 0; this.cpu.pc = 0xA7D7; executed += 100; continue; }
-                // $A964: Leader tone write loop. Skip.
+                // $A7D3: LEAX -1,X; BNE (delay loop). Charge real cycle cost.
+                if (pc === 0xA7D3) {
+                    const x = this.cpu.x || 1;
+                    this.cpu.x = 0; this.cpu.pc = 0xA7D7;
+                    executed += x * 5; continue;
+                }
+                // $A964: Leader tone write loop. Skip with real cost.
                 if (pc === 0xA964) {
                     this.mem.write(0x8D, 0); this.mem.write(0x8E, 0);
-                    this.cpu.x = 0; this.cpu.pc = 0xA970; executed += 100; continue;
+                    this.cpu.x = 0; this.cpu.pc = 0xA970; executed += 5000; continue;
                 }
             }
 
