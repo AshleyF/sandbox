@@ -160,8 +160,8 @@ export class CoCo {
             }
 
             // Speed up motor delay loop at $A7D3: LEAX -1,X; BNE $A7D3
-            if (this.cassette.interceptEnabled && pc === 0xA7D3 &&
-                (this.cassette.motorOn || this.cassette.recording)) {
+            // Only when motor is actually on (CSAVE/CLOAD activated it)
+            if (this.cassette.interceptEnabled && pc === 0xA7D3 && this.cassette.motorOn) {
                 this.cpu.x = 0;
                 this.cpu.pc = 0xA7D5; // skip past BNE
                 executed += 100;
