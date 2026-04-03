@@ -10,9 +10,13 @@ export class Sound {
         this._dacActive = false;
 
         this._cycleAccum = 0;
-        this._cyclesPerSample = 894886 / 44100; // ~20.3
-        this._sampleBuffer = new Float32Array(8192);
-        this._sampleCount = 0;
+        this._cyclesPerSample = 894886 / 44100;
+
+        // Power-of-2 ring buffer for lock-free producer/consumer
+        this._ringSize = 16384;
+        this._ring = new Float32Array(this._ringSize);
+        this._writePos = 0;
+        this._readPos = 0;
     }
 
     init() {
@@ -21,10 +25,30 @@ export class Sound {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)({
                 sampleRate: 44100
             });
+            this._startPlayback();
             this.enabled = true;
         } catch (e) {
             console.warn('Web Audio not available:', e);
         }
+    }
+
+    _startPlayback() {
+        const ctx = this.audioCtx;
+        const self = this;
+        const node = ctx.createScriptProcessor(2048, 0, 1);
+        node.onaudioprocess = (e) => {
+            const output = e.outputBuffer.getChannelData(0);
+            for (let i = 0; i < output.length; i++) {
+                if (self._readPos !== self._writePos) {
+                    output[i] = self._ring[self._readPos];
+                    self._readPos = (self._readPos + 1) & (self._ringSize - 1);
+                } else {
+                    output[i] = 0;
+                }
+            }
+        };
+        node.connect(ctx.destination);
+        this._node = node;
     }
 
     setDAC(value) {
@@ -45,36 +69,19 @@ export class Sound {
         this._cycleAccum += cycles;
         if (this._cycleAccum < this._cyclesPerSample) return;
 
-        const sample = ((this.dacValue / 31.5) - 1.0) * 0.3;
+        const sample = this.soundEnabled
+            ? ((this.dacValue / 31.5) - 1.0) * 0.3
+            : 0;
+
         while (this._cycleAccum >= this._cyclesPerSample) {
             this._cycleAccum -= this._cyclesPerSample;
-            if (this._sampleCount < this._sampleBuffer.length) {
-                this._sampleBuffer[this._sampleCount++] = sample;
+            const nextWrite = (this._writePos + 1) & (this._ringSize - 1);
+            if (nextWrite !== this._readPos) {
+                this._ring[this._writePos] = sample;
+                this._writePos = nextWrite;
             }
         }
     }
 
-    // Call once per frame to flush accumulated samples to Web Audio
-    flush() {
-        if (!this.enabled || !this.audioCtx || this._sampleCount === 0) {
-            this._sampleCount = 0;
-            return;
-        }
-
-        // Limit buffer size to prevent resource exhaustion
-        const count = Math.min(this._sampleCount, 4096);
-        const ctx = this.audioCtx;
-        const buf = ctx.createBuffer(1, count, 44100);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < count; i++) {
-            data[i] = this._sampleBuffer[i];
-        }
-
-        const source = ctx.createBufferSource();
-        source.buffer = buf;
-        source.connect(ctx.destination);
-        source.start();
-
-        this._sampleCount = 0;
-    }
+    flush() {}
 }
