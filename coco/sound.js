@@ -8,6 +8,7 @@ export class Sound {
         this.dacValue = 0;
         this.soundEnabled = false;
         this._dacActive = false;
+        this._dacIdleCycles = 0;
 
         this._cycleAccum = 0;
         this._cyclesPerSample = 894886 / 44100;
@@ -56,16 +57,29 @@ export class Sound {
         if (newVal !== this.dacValue) {
             this.dacValue = newVal;
             this._dacActive = true;
+            this._dacIdleCycles = 0;
         }
     }
 
     setSoundEnable(enabled) {
         this.soundEnabled = enabled;
-        if (!enabled) this._dacActive = false;
+        if (!enabled) {
+            this._dacActive = false;
+            this._dacIdleCycles = 0;
+        }
     }
 
     addCycles(cycles) {
         if (!this.enabled || !this._dacActive) return;
+
+        // If DAC hasn't changed for a while, stop generating samples
+        this._dacIdleCycles += cycles;
+        if (this._dacIdleCycles > 2000) { // ~2ms of no DAC changes = silence
+            this._dacActive = false;
+            this._cycleAccum = 0;
+            return;
+        }
+
         this._cycleAccum += cycles;
         if (this._cycleAccum < this._cyclesPerSample) return;
 
