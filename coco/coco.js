@@ -43,13 +43,13 @@ export class CoCo {
                 let portA = this.keyboard.readRows(colSelect);
 
                 // Joystick comparator on bit 7
-                // Axis selection: PIA0 CA2 (ctrlA bits 5,4,3) selects X/Y
-                //                 PIA0 CB2 (ctrlB bits 5,4,3) selects left/right
                 // DAC value from PIA1 port A bits 2-7
+                // Axis MUX: CA2 selects joystick (0=right, 1=left)
+                //            CB2 selects axis (0=X, 1=Y)
                 const dacValue = (this.pia1.dataA >> 2) & 0x3F;
-                const selY = !!(this.pia0.ctrlA & 0x08); // CA2 output: 0=X, 1=Y
-                const selRight = !!(this.pia0.ctrlB & 0x08); // CB2 output: 0=left, 1=right
-                const axis = (selRight ? 2 : 0) + (selY ? 1 : 0);
+                const selLeft = !!(this.pia0.ctrlA & 0x08);  // CA2: 0=right, 1=left
+                const selY = !!(this.pia0.ctrlB & 0x08);     // CB2: 0=X, 1=Y
+                const axis = (selLeft ? 0 : 2) + (selY ? 1 : 0);
                 const cmpResult = this.joystick.compare(axis, dacValue);
                 if (cmpResult) {
                     portA |= 0x80;  // DAC >= joystick: comparator high
