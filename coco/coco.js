@@ -142,19 +142,81 @@ export class CoCo {
             if (this.cassette.interceptEnabled && pc === 0xA77C &&
                 this.cassette.playBuffer &&
                 this.cassette.playPos < this.cassette.playBuffer.length) {
-                // Turn motor on (what A7CA does)
                 this.cassette.setMotor(true);
-                // Set the speed flag that sync would have calibrated
-                this.mem.write(0x84, 0x00); // speed flag
-                this.mem.write(0x90, 0x12); // threshold high
-                this.mem.write(0x91, 0x08); // threshold low
-                this.cpu.pc = 0xA796; // RTS at end of CSRDON
+                this.mem.write(0x84, 0x00);
+                this.mem.write(0x90, 0x12);
+                this.mem.write(0x91, 0x08);
+                this.cpu.pc = 0xA796;
                 executed += 100;
                 continue;
             }
 
-            // ROM intercept: BLKIN (block-in) at $A70B
-            // Replaces the entire block-read including leader/sync detection
+            // ROM intercept: full block read at $A701
+            // A701: BSR A77C (sync) + BSR A70B (block read) + JSR A7E9 (motor off) + LDB <$81 + RTS
+            // We do it all: read block, turn motor off, set B and Z flag, return
+            if (this.cassette.interceptEnabled &&
+                pc === 0xA701 && this.cassette.playBuffer &&
+                this.cassette.playPos < this.cassette.playBuffer.length) {
+
+                // Turn motor on
+                this.cassette.setMotor(true);
+
+                // Skip leader bytes
+                while (this.cassette.playPos < this.cassette.playBuffer.length &&
+                       this.cassette.playBuffer[this.cassette.playPos] === 0x55) {
+                    this.cassette.playPos++;
+                }
+
+                let error = 1;
+                if (this.cassette.playPos < this.cassette.playBuffer.length &&
+                    this.cassette.playBuffer[this.cassette.playPos] === 0x3C) {
+                    this.cassette.playPos++; // skip sync
+
+                    const blockType = this.cassette.nextByte();
+                    const blockLen = this.cassette.nextByte();
+
+                    this.mem.write(0x7C, blockType);
+                    this.mem.write(0x7D, blockLen);
+
+                    let checksum = (blockType + blockLen) & 0xFF;
+                    let x = 0x01DA;
+
+                    for (let i = 0; i < blockLen; i++) {
+                        const byte = this.cassette.nextByte();
+                        if (byte < 0) break;
+                        this.mem.write(x, byte);
+                        x = (x + 1) & 0xFFFF;
+                        checksum = (checksum + byte) & 0xFF;
+                    }
+
+                    const expectedChecksum = this.cassette.nextByte();
+
+                    // Skip trailer
+                    if (this.cassette.playPos < this.cassette.playBuffer.length &&
+                        this.cassette.playBuffer[this.cassette.playPos] === 0x55) {
+                        this.cassette.playPos++;
+                    }
+
+                    const ok = expectedChecksum >= 0 && (checksum === (expectedChecksum & 0xFF));
+                    error = ok ? 0 : 1;
+                    this.cpu.x = x;
+                }
+
+                // Turn motor off (what A7E9 does)
+                this.cassette.setMotor(false);
+
+                // Set error flag and B register (what A708: LDB <$81 does)
+                this.mem.write(0x81, error);
+                this.cpu.b = error;
+                this.cpu.flagZ = (error === 0);
+                this.cpu.flagN = false;
+
+                this.cpu.pc = 0xA70A; // RTS at end of A701
+                executed += 500;
+                continue;
+            }
+
+            // ROM intercept: BLKIN at $A70B (called directly for subsequent blocks)
             if (this.cassette.interceptEnabled &&
                 pc === 0xA70B && this.cassette.playBuffer &&
                 this.cassette.playPos < this.cassette.playBuffer.length) {
@@ -199,6 +261,11 @@ export class CoCo {
                     // Error flag: 0=OK
                     const ok = expectedChecksum >= 0 && (checksum === (expectedChecksum & 0xFF));
                     this.mem.write(0x81, ok ? 0 : 1);
+
+                    // Set B and Z flag — callers check Z after BLKIN returns
+                    this.cpu.b = ok ? 0 : 1;
+                    this.cpu.flagZ = ok;
+                    this.cpu.flagN = false;
 
                     this.cpu.x = x;
                     this.cpu.pc = 0xA748; // RTS
