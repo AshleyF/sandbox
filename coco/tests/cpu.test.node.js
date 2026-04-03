@@ -6,7 +6,6 @@ import { SAM } from '../sam.js';
 import { Keyboard } from '../keyboard.js';
 import { VDG } from '../vdg.js';
 import { Memory } from '../memory.js';
-import { makeTestROM } from '../testrom.js';
 import { Cassette, parseCAS, buildCAS, parseHeader, buildHeader, casToWAV, wavToCAS } from '../cassette.js';
 
 // Minimal test framework (same API as run.js but for Node)
@@ -1061,31 +1060,6 @@ test('Full render pipeline: CPU writes screen mem, VDG reads it', () => {
     const px = 2;
     const idx = (py * 256 + px) * 4;
     eq(vdg.pixels[idx + 1], 0xFF, 'green pixel from char A');
-});
-
-test('Test ROM boots and writes HELLO COCO to screen', () => {
-    const mem = new Memory();
-    mem.pia0 = new PIA();
-    mem.pia1 = new PIA();
-    mem.sam = new SAM();
-    const { rom, extrom } = makeTestROM();
-    mem.loadROM(rom, 0xA000);
-    mem.loadROM(extrom, 0x8000);
-    const cpu = new MC6809(addr => mem.read(addr), (addr, val) => mem.write(addr, val));
-    cpu.reset();
-
-    // Reset should set PC from vector at $FFFE → $A000
-    eq(cpu.pc, 0xA000, 'PC after reset');
-
-    // Run for a bunch of cycles (enough to execute init + screen write)
-    cpu.run(50000);
-
-    // Check that 'H' (code $08) was written to screen at $04EA
-    eq(mem.read(0x04EA), 0x08, 'H at screen pos');
-    // Check 'E' at $04EB
-    eq(mem.read(0x04EB), 0x05, 'E at screen pos');
-    // Check that screen was cleared with $60
-    eq(mem.read(0x0400), 0x60, 'screen cleared with $60');
 });
 
 // ===================================================================

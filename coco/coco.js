@@ -9,7 +9,6 @@ import { VDG } from './vdg.js';
 import { Keyboard } from './keyboard.js';
 import { Joystick } from './joystick.js';
 import { Debugger } from './debug.js';
-import { makeTestROM } from './testrom.js';
 import { Cassette, casToWAV, buildCAS } from './cassette.js';
 
 const CYCLES_PER_FRAME = 14914; // ~894,886 Hz / 60 fps
@@ -450,15 +449,6 @@ document.getElementById('stop')?.addEventListener('click', () => {
     updateDebug();
     updateTapeStatus();
     status.textContent = `Stopped. ${coco.dbg.dumpRegisters().split('\n')[0]}`;
-});
-
-document.getElementById('testRom')?.addEventListener('click', () => {
-    const { rom, extrom } = makeTestROM();
-    coco.mem.loadROM(rom, 0xA000);
-    coco.mem.loadROM(extrom, 0x8000);
-    coco.reset();
-    updateDebug();
-    status.textContent = `Test ROM loaded. PC=${coco.cpu.pc.toString(16).toUpperCase().padStart(4, '0')}. Click Run!`;
 });
 
 document.getElementById('step')?.addEventListener('click', () => {
