@@ -7,6 +7,7 @@ import { PIA } from './pia.js';
 import { SAM } from './sam.js';
 import { VDG } from './vdg.js';
 import { Keyboard } from './keyboard.js';
+import { Joystick } from './joystick.js';
 import { Debugger } from './debug.js';
 import { makeTestROM } from './testrom.js';
 import { Cassette, casToWAV, buildCAS } from './cassette.js';
@@ -20,6 +21,7 @@ export class CoCo {
         this.pia1 = new PIA();
         this.sam = new SAM();
         this.keyboard = new Keyboard();
+        this.joystick = new Joystick();
         this.cassette = new Cassette();
         this.vdg = new VDG(addr => this.mem.read(addr));
 
@@ -28,14 +30,38 @@ export class CoCo {
         this.mem.pia1 = this.pia1;
         this.mem.sam = this.sam;
 
-        // Wire keyboard to PIA0
+        // Wire keyboard and joystick to PIA0
         // PIA0 port B selects keyboard columns, port A reads rows
+        // PIA0 port A bit 7 = joystick comparator output
+        // PIA0 port A bit 0 = right joystick button
+        // PIA0 port A bit 1 = left joystick button
         const origReadPia0 = this.pia0.read.bind(this.pia0);
         this.pia0.read = (offset) => {
             if (offset === 0 && (this.pia0.ctrlA & 0x04)) {
-                // Reading port A data — feed keyboard matrix
+                // Feed keyboard matrix
                 const colSelect = this.pia0.dataB;
-                this.pia0.inputA = this.keyboard.readRows(colSelect);
+                let portA = this.keyboard.readRows(colSelect);
+
+                // Joystick comparator on bit 7
+                // Axis selection: PIA0 CA2 (ctrlA bits 5,4,3) selects X/Y
+                //                 PIA0 CB2 (ctrlB bits 5,4,3) selects left/right
+                // DAC value from PIA1 port A bits 2-7
+                const dacValue = (this.pia1.dataA >> 2) & 0x3F;
+                const selY = !!(this.pia0.ctrlA & 0x08); // CA2 output: 0=X, 1=Y
+                const selRight = !!(this.pia0.ctrlB & 0x08); // CB2 output: 0=left, 1=right
+                const axis = (selRight ? 2 : 0) + (selY ? 1 : 0);
+                const cmpResult = this.joystick.compare(axis, dacValue);
+                if (cmpResult) {
+                    portA |= 0x80;  // DAC >= joystick: comparator high
+                } else {
+                    portA &= 0x7F;  // DAC < joystick: comparator low
+                }
+
+                // Joystick buttons (active low)
+                if (this.joystick.buttons[1]) portA &= ~0x01; // right button → bit 0
+                if (this.joystick.buttons[0]) portA &= ~0x02; // left button → bit 1
+
+                this.pia0.inputA = portA;
             }
             return origReadPia0(offset);
         };
@@ -133,6 +159,7 @@ export class CoCo {
 
     stepFrame() {
         this.cpu.checkInterrupts();
+        this.joystick.update();
         let executed = 0;
         while (executed < CYCLES_PER_FRAME) {
             const pc = this.cpu.pc;
@@ -327,11 +354,14 @@ const status = document.getElementById('status');
 const canvas = document.getElementById('screen');
 if (canvas) coco.setCanvas(canvas);
 
-// Keyboard events
+// Keyboard and joystick events
+// Arrow keys go to joystick, other keys to keyboard
 document.addEventListener('keydown', (e) => {
+    if (coco.joystick.keyDown(e)) { e.preventDefault(); return; }
     if (coco.keyboard.keyDown(e)) e.preventDefault();
 });
 document.addEventListener('keyup', (e) => {
+    if (coco.joystick.keyUp(e)) { e.preventDefault(); return; }
     if (coco.keyboard.keyUp(e)) e.preventDefault();
 });
 
@@ -434,7 +464,7 @@ const BAR_WIDTH = 40;
 let tapeStatusInterval = null;
 function startTapeStatus() {
     if (tapeStatusInterval) return;
-    tapeStatusInterval = setInterval(updateTapeStatus, 100);
+    tapeStatusInterval = setInterval(() => { updateTapeStatus(); updateJoystickDisplay(); }, 100);
 }
 function stopTapeStatus() {
     if (tapeStatusInterval) { clearInterval(tapeStatusInterval); tapeStatusInterval = null; }
@@ -479,6 +509,45 @@ function updateTapeStatus() {
         if (tapeBar) tapeBar.textContent = '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
         if (tapePct) tapePct.textContent = Math.round(progress * 100) + '%';
     }
+}
+
+// === Joystick display ===
+const joyCanvas = document.getElementById('joystick-display');
+const joyCtx = joyCanvas?.getContext('2d');
+const joyPos = document.getElementById('joystick-pos');
+
+function updateJoystickDisplay() {
+    if (!joyCtx) return;
+    const j = coco.joystick;
+    const w = 80, h = 80;
+
+    joyCtx.fillStyle = '#111';
+    joyCtx.fillRect(0, 0, w, h);
+
+    // Crosshair
+    joyCtx.strokeStyle = '#333';
+    joyCtx.beginPath();
+    joyCtx.moveTo(w/2, 0); joyCtx.lineTo(w/2, h);
+    joyCtx.moveTo(0, h/2); joyCtx.lineTo(w, h/2);
+    joyCtx.stroke();
+
+    // Stick position
+    const px = (j.axes[0] / 63) * (w - 8) + 4;
+    const py = (j.axes[1] / 63) * (h - 8) + 4;
+    joyCtx.fillStyle = j.buttons[0] ? '#f44' : '#0f0';
+    joyCtx.beginPath();
+    joyCtx.arc(px, py, 5, 0, Math.PI * 2);
+    joyCtx.fill();
+
+    // Border glow when button pressed
+    if (j.buttons[0] || j.buttons[1]) {
+        joyCtx.strokeStyle = '#f44';
+        joyCtx.lineWidth = 2;
+        joyCtx.strokeRect(1, 1, w - 2, h - 2);
+        joyCtx.lineWidth = 1;
+    }
+
+    if (joyPos) joyPos.textContent = `X:${j.axes[0]} Y:${j.axes[1]}${j.buttons[0] ? ' [BTN]' : ''}`;
 }
 
 // === Cassette UI ===

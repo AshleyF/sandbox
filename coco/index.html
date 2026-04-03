@@ -31,13 +31,20 @@
         <input type="file" id="tapeFile" accept=".cas,.wav,.c10" style="display:none">
     </div>
     <div id="status">Awaiting ROM...</div>
-    <div id="tape-status" style="margin-top:0.5em;font-size:0.85em;color:#888;">
-        <span id="tape-label">🎵 Tape: empty</span>
-        <span id="tape-motor" style="margin-left:1em;">⏹ Motor off</span>
-        <span id="tape-signal" style="margin-left:1em;">Signal: ─</span>
-        <div style="margin-top:0.3em;">
-            <span style="color:#555;">[</span><span id="tape-bar" style="color:#0f0;letter-spacing:-1px;">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</span><span style="color:#555;">]</span>
-            <span id="tape-pct" style="margin-left:0.5em;color:#666;">0%</span>
+    <div style="display:flex;justify-content:center;gap:2em;margin-top:0.5em;">
+        <div id="tape-status" style="font-size:0.85em;color:#888;">
+            <span id="tape-label">🎵 Tape: empty</span>
+            <span id="tape-motor" style="margin-left:1em;">⏹ Motor off</span>
+            <span id="tape-signal" style="margin-left:1em;">Signal: ─</span>
+            <div style="margin-top:0.3em;">
+                <span style="color:#555;">[</span><span id="tape-bar" style="color:#0f0;letter-spacing:-1px;">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</span><span style="color:#555;">]</span>
+                <span id="tape-pct" style="margin-left:0.5em;color:#666;">0%</span>
+            </div>
+        </div>
+        <div id="joystick-status" style="font-size:0.85em;color:#888;text-align:center;">
+            <div>🕹 Joystick (arrows + Alt/Ctrl)</div>
+            <canvas id="joystick-display" width="80" height="80" style="border:1px solid #444;margin-top:0.3em;background:#111;"></canvas>
+            <div id="joystick-pos" style="color:#666;font-size:0.75em;">X:31 Y:31</div>
         </div>
     </div>
     <pre id="debug" style="text-align:left;display:inline-block;font-size:11px;color:#0a0;margin-top:1em;"></pre>
