@@ -131,12 +131,11 @@ export class CoCo {
 
     reset() {
         this.cpu.reset();
+        this._cartStarted = false;
         // Cartridge autostart: assert FIRQ and set PIA1 CB1 flag
-        // BASIC's FIRQ handler checks PIA1 $FF23 bit 7 (CB1 IRQ flag)
-        // and jumps to $C000 if set
         if (this.mem.cartrom) {
-            this.pia1.irqB1 = true;   // set CART flag in PIA1 ctrl B
-            this.cpu.firqLine = true;  // assert FIRQ line
+            this.pia1.irqB1 = true;
+            this.cpu.firqLine = true;
         }
     }
 
@@ -175,10 +174,14 @@ export class CoCo {
         this.joystick.update();
         let executed = 0;
         while (executed < CYCLES_PER_FRAME) {
-            // Keep CART signal active while cartridge is present
-            if (this.mem.cartrom) {
+            // Keep CART signal active until cartridge code starts running
+            if (this.mem.cartrom && !this._cartStarted) {
                 this.pia1.irqB1 = true;
                 this.cpu.firqLine = true;
+                if (this.cpu.pc >= 0xC000 && this.cpu.pc < 0xFF00) {
+                    this._cartStarted = true;
+                    this.cpu.firqLine = false;
+                }
             }
             this.cpu.checkInterrupts();
             const pc = this.cpu.pc;
