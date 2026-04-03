@@ -95,7 +95,13 @@ export class Keyboard {
     constructor() {
         // 7 rows × 8 columns, each bit = 1 pressed, 0 released
         this.matrix = new Uint8Array(7);
-        this._heldShifted = new Set(); // track auto-shifted keys
+        this._heldShifted = new Set();
+    }
+
+    // Release all keys (call on window blur)
+    clearAll() {
+        this.matrix.fill(0);
+        this._heldShifted.clear();
     }
 
     // Call when browser key goes down

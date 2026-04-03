@@ -384,6 +384,12 @@ document.addEventListener('keyup', (e) => {
     if (coco.joystick.keyUp(e)) { e.preventDefault(); return; }
     if (coco.keyboard.keyUp(e)) e.preventDefault();
 });
+// Clear all keys when window loses focus (prevents stuck keys)
+window.addEventListener('blur', () => {
+    coco.keyboard.clearAll();
+    coco.joystick._keyState = { left: false, right: false, up: false, down: false };
+    coco.joystick.buttons = [false, false];
+});
 
 // Auto-load ROMs from roms/ directory on startup
 async function autoLoadROMs() {
