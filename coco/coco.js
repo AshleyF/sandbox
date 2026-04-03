@@ -348,11 +348,6 @@ export class CoCo {
                 this.mem.write(0x8D, 0); this.mem.write(0x8E, 0);
                 this.cpu.x = 0; this.cpu.pc = 0xA970; executed += 100; continue;
             }
-            // $A98C: INCA; BNE (DAC delay). Skip.
-            if (pc === 0xA98C) {
-                this.cpu.a = 0; this.cpu.flagZ = true;
-                this.cpu.pc = 0xA98F; executed += 50; continue;
-            }
 
             const c = this.cpu.step();
             executed += c;
