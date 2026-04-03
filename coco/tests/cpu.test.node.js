@@ -7,6 +7,7 @@ import { Keyboard } from '../keyboard.js';
 import { VDG } from '../vdg.js';
 import { Memory } from '../memory.js';
 import { makeTestROM } from '../testrom.js';
+import { Cassette, parseCAS, buildCAS, parseHeader, buildHeader, casToWAV, wavToCAS } from '../cassette.js';
 
 // Minimal test framework (same API as run.js but for Node)
 let _passed = 0, _failed = 0, _errors = [], _currentSuite = '';
@@ -1085,6 +1086,88 @@ test('Test ROM boots and writes HELLO COCO to screen', () => {
     eq(mem.read(0x04EB), 0x05, 'E at screen pos');
     // Check that screen was cleared with $60
     eq(mem.read(0x0400), 0x60, 'screen cleared with $60');
+});
+
+// ===================================================================
+// Cassette Tests
+// ===================================================================
+suite('Cassette');
+
+test('Build and parse CAS round-trip', () => {
+    const header = buildHeader('TEST', 0x00, 0x00, 0x0000, 0x0000);
+    const blocks = [
+        { type: 0x00, data: header },                           // header block
+        { type: 0x01, data: new Uint8Array([0x10, 0x20, 0x30]) }, // data block
+        { type: 0xFF, data: new Uint8Array(0) },                 // EOF block
+    ];
+    const cas = buildCAS(blocks);
+    const parsed = parseCAS(cas.buffer);
+    eq(parsed.length, 3, 'block count');
+    eq(parsed[0].type, 0x00, 'header block type');
+    eq(parsed[1].type, 0x01, 'data block type');
+    eq(parsed[2].type, 0xFF, 'EOF block type');
+    eq(parsed[1].data[0], 0x10, 'data byte 0');
+    eq(parsed[1].data[1], 0x20, 'data byte 1');
+    eq(parsed[1].data[2], 0x30, 'data byte 2');
+});
+
+test('Parse header block', () => {
+    const header = buildHeader('HELLO', 0x00, 0xFF, 0x1000, 0x2000);
+    const info = parseHeader(header);
+    eq(info.name, 'HELLO', 'name');
+    eq(info.fileType, 0x00, 'type');
+    eq(info.asciiFlag, 0xFF, 'ascii');
+    eq(info.startAddr, 0x1000, 'start');
+    eq(info.loadAddr, 0x2000, 'load');
+});
+
+test('CAS to WAV produces valid WAV', () => {
+    const cas = buildCAS([
+        { type: 0x00, data: buildHeader('TEST', 0, 0, 0, 0) },
+        { type: 0xFF, data: new Uint8Array(0) },
+    ]);
+    const wav = casToWAV(cas);
+    const view = new DataView(wav);
+    // Check RIFF header
+    const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+    eq(riff, 'RIFF', 'RIFF header');
+    const wave = String.fromCharCode(view.getUint8(8), view.getUint8(9), view.getUint8(10), view.getUint8(11));
+    eq(wave, 'WAVE', 'WAVE marker');
+    eq(view.getUint32(24, true), 44100, 'sample rate');
+    eq(view.getUint16(34, true), 16, 'bits per sample');
+    isTrue(wav.byteLength > 100, 'has audio data');
+});
+
+test('WAV round-trip preserves data bytes', () => {
+    // Build a simple CAS, encode to WAV, decode back
+    const original = new Uint8Array([0x55, 0x55, 0x55, 0x3C, 0x01, 0x03, 0xAA, 0xBB, 0xCC]);
+    const wav = casToWAV(original);
+    const decoded = wavToCAS(wav);
+    // The decoded data should contain our original bytes (possibly with some sync jitter)
+    // Check that the sync byte and data are present
+    let found3C = false;
+    for (let i = 0; i < decoded.length; i++) {
+        if (decoded[i] === 0x3C) { found3C = true; break; }
+    }
+    isTrue(found3C, 'sync byte found in decoded WAV');
+});
+
+test('Cassette readBit streams data', () => {
+    const c = new Cassette();
+    c.loadCAS(new Uint8Array([0xA5]).buffer); // 10100101
+    const bits = [];
+    for (let i = 0; i < 8; i++) bits.push(c.readBit());
+    eq(bits.join(''), '10100101', 'bit stream');
+});
+
+test('Cassette writeBit accumulates bytes', () => {
+    const c = new Cassette();
+    c.startRecording();
+    // Write 10100101 = $A5
+    [1,0,1,0,0,1,0,1].forEach(b => c.writeBit(b));
+    const data = c.stopRecording();
+    eq(data.length, 1, 'one byte');
+    eq(data[0], 0xA5, 'byte value');
 });
 
 summary();

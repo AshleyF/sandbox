@@ -9,6 +9,7 @@ import { VDG } from './vdg.js';
 import { Keyboard } from './keyboard.js';
 import { Debugger } from './debug.js';
 import { makeTestROM } from './testrom.js';
+import { Cassette, casToWAV, buildCAS } from './cassette.js';
 
 const CYCLES_PER_FRAME = 14914; // ~894,886 Hz / 60 fps
 
@@ -19,6 +20,7 @@ export class CoCo {
         this.pia1 = new PIA();
         this.sam = new SAM();
         this.keyboard = new Keyboard();
+        this.cassette = new Cassette();
         this.vdg = new VDG(addr => this.mem.read(addr));
 
         // Wire PIAs and SAM into memory bus
@@ -197,4 +199,59 @@ function updateDebug() {
         .map(d => `${d.addr.toString(16).toUpperCase().padStart(4, '0')} ${d.hex.padEnd(14)} ${d.text}`)
         .join('\n');
     debugEl.textContent = regs + '\n\n' + dis;
+}
+
+// === Cassette UI ===
+document.getElementById('loadTape')?.addEventListener('click', () => {
+    document.getElementById('tapeFile')?.click();
+});
+
+document.getElementById('tapeFile')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const data = await file.arrayBuffer();
+    const name = file.name.toLowerCase();
+
+    if (name.endsWith('.wav')) {
+        coco.cassette.loadWAV(data);
+        status.textContent = `WAV tape loaded: ${file.name}`;
+    } else {
+        coco.cassette.loadCAS(data);
+        status.textContent = `CAS tape loaded: ${file.name}`;
+    }
+});
+
+document.getElementById('saveTapeCAS')?.addEventListener('click', () => {
+    // Dump current cassette record buffer (or playback buffer) as CAS
+    const data = coco.cassette.recording
+        ? coco.cassette.stopRecording()
+        : (coco.cassette.playBuffer || new Uint8Array(0));
+    if (data.length === 0) {
+        status.textContent = 'No tape data to save';
+        return;
+    }
+    downloadBlob(new Blob([data]), 'program.cas');
+    status.textContent = `Saved CAS (${data.length} bytes)`;
+});
+
+document.getElementById('saveTapeWAV')?.addEventListener('click', () => {
+    const data = coco.cassette.recording
+        ? coco.cassette.stopRecording()
+        : (coco.cassette.playBuffer || new Uint8Array(0));
+    if (data.length === 0) {
+        status.textContent = 'No tape data to save';
+        return;
+    }
+    const wav = casToWAV(data);
+    downloadBlob(new Blob([wav], { type: 'audio/wav' }), 'program.wav');
+    status.textContent = `Saved WAV (playable on a real CoCo!)`;
+});
+
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
 }

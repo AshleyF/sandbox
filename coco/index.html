@@ -22,7 +22,12 @@
         <button id="run">Run</button>
         <button id="stop">Stop</button>
         <button id="step">Step</button>
+        <span style="color:#555;margin:0 0.5em;">│</span>
+        <button id="loadTape">Load Tape</button>
+        <button id="saveTapeCAS">Save CAS</button>
+        <button id="saveTapeWAV">Save WAV</button>
         <input type="file" id="romFile" accept=".rom,.bin" multiple style="display:none">
+        <input type="file" id="tapeFile" accept=".cas,.wav,.c10" style="display:none">
     </div>
     <div id="status">Awaiting ROM...</div>
     <pre id="debug" style="text-align:left;display:inline-block;font-size:11px;color:#0a0;margin-top:1em;"></pre>
