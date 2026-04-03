@@ -167,7 +167,7 @@ export class Keyboard {
         // Keys that are unshifted on CoCo but shifted on PC keyboard
         // When browser sends these, the physical Shift is already held
         // so we need to suppress the CoCo SHIFT
-        const UNSHIFTED_ON_COCO = ':';
+        const UNSHIFTED_ON_COCO = ':@';
         const needsSuppressShift = UNSHIFTED_ON_COCO.includes(key);
 
         key = key.toUpperCase();
