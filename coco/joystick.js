@@ -76,6 +76,6 @@ export class Joystick {
     // Returns true if DAC value >= joystick position (comparator output)
     // axis: 0=leftX, 1=leftY, 2=rightX, 3=rightY
     compare(axis, dacValue) {
-        return dacValue >= this.axes[axis & 3];
+        return dacValue <= this.axes[axis & 3];
     }
 }
