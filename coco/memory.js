@@ -13,13 +13,13 @@ export class Memory {
 
     read(addr) {
         addr &= 0xFFFF;
-        // PIA 0
-        if (addr >= 0xFF00 && addr <= 0xFF03 && this.pia0) {
-            return this.pia0.read(addr - 0xFF00);
+        // PIA 0 ($FF00-$FF1F, partially decoded — mirrors every 4 bytes)
+        if (addr >= 0xFF00 && addr <= 0xFF1F && this.pia0) {
+            return this.pia0.read(addr & 0x03);
         }
-        // PIA 1
-        if (addr >= 0xFF20 && addr <= 0xFF23 && this.pia1) {
-            return this.pia1.read(addr - 0xFF20);
+        // PIA 1 ($FF20-$FF3F, partially decoded — mirrors every 4 bytes)
+        if (addr >= 0xFF20 && addr <= 0xFF3F && this.pia1) {
+            return this.pia1.read(addr & 0x03);
         }
         // SAM (write-only in hardware, reads return $FF)
         if (addr >= 0xFFC0 && addr <= 0xFFDF) {
@@ -44,14 +44,14 @@ export class Memory {
     write(addr, val) {
         addr &= 0xFFFF;
         val &= 0xFF;
-        // PIA 0
-        if (addr >= 0xFF00 && addr <= 0xFF03 && this.pia0) {
-            this.pia0.write(addr - 0xFF00, val);
+        // PIA 0 ($FF00-$FF1F, partially decoded)
+        if (addr >= 0xFF00 && addr <= 0xFF1F && this.pia0) {
+            this.pia0.write(addr & 0x03, val);
             return;
         }
-        // PIA 1
-        if (addr >= 0xFF20 && addr <= 0xFF23 && this.pia1) {
-            this.pia1.write(addr - 0xFF20, val);
+        // PIA 1 ($FF20-$FF3F, partially decoded)
+        if (addr >= 0xFF20 && addr <= 0xFF3F && this.pia1) {
+            this.pia1.write(addr & 0x03, val);
             return;
         }
         // SAM registers

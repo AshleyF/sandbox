@@ -124,8 +124,8 @@ export class CoCo {
             this.ctx.putImageData(img, 0, 0);
         }
 
-        // Signal VSYNC via PIA0 CA1
-        this.pia0.setCA1(true);
+        // Signal VSYNC via PIA0 CB1 (falling edge — CoCo FS1 is on CB1)
+        this.pia0.setCB1(false);  // falling edge sets irqB1 flag
         if (this.pia0.irqActive) {
             this.cpu.irqLine = true;
         }
@@ -142,6 +142,8 @@ export class CoCo {
         }
         this.renderFrame();
         this.cpu.irqLine = false;
+        // Reset CB1 high between frames (so next falling edge triggers)
+        this.pia0.setCB1(true);
     }
 
     start() {
