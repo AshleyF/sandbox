@@ -70,30 +70,61 @@ mapKey('CLEAR', 6, 1);  // mapped to Escape below
 mapKey('BREAK', 6, 2);  // mapped to Pause/F12 below
 mapKey('SHIFT', 6, 7);
 
+// Shifted symbol mappings: browser key → { base key, needs shift }
+// On the CoCo, these symbols are produced by SHIFT + another key
+const SHIFT_MAP = {
+    '"': '2',
+    '!': '1',
+    '#': '3',
+    '$': '4',
+    '%': '5',
+    '&': '6',
+    "'": '7',
+    '(': '8',
+    ')': '9',
+    '*': ':',
+    '+': ';',
+    '<': ',',
+    '>': '.',
+    '?': '/',
+    '=': '-',
+    '_': ' ', // SHIFT+SPACE not standard but common mapping
+};
+
 export class Keyboard {
     constructor() {
         // 7 rows × 8 columns, each bit = 1 pressed, 0 released
         this.matrix = new Uint8Array(7);
+        this._heldShifted = new Set(); // track auto-shifted keys
     }
 
     // Call when browser key goes down
     keyDown(event) {
-        const pos = this._mapEvent(event);
-        if (pos) {
-            this.matrix[pos.row] |= (1 << pos.col);
-            return true;
+        const result = this._mapEvent(event);
+        if (!result) return false;
+
+        if (result.autoShift) {
+            // Press SHIFT + base key
+            this.matrix[6] |= (1 << 7); // SHIFT
+            this._heldShifted.add(event.key);
         }
-        return false;
+        this.matrix[result.row] |= (1 << result.col);
+        return true;
     }
 
     // Call when browser key goes up
     keyUp(event) {
-        const pos = this._mapEvent(event);
-        if (pos) {
-            this.matrix[pos.row] &= ~(1 << pos.col);
-            return true;
+        const result = this._mapEvent(event);
+        if (!result) return false;
+
+        this.matrix[result.row] &= ~(1 << result.col);
+        if (this._heldShifted.has(event.key)) {
+            this._heldShifted.delete(event.key);
+            if (this._heldShifted.size === 0) {
+                this.matrix[6] &= ~(1 << 7); // release SHIFT
+            }
         }
-        return false;
+        return true;
     }
 
     // Read the keyboard matrix for a given column selection
@@ -115,14 +146,25 @@ export class Keyboard {
     }
 
     _mapEvent(event) {
-        let key = event.key.toUpperCase();
+        let key = event.key;
+
+        // Check for shifted symbols first
+        if (SHIFT_MAP[key]) {
+            const baseKey = SHIFT_MAP[key].toUpperCase();
+            const pos = KEY_MAP[baseKey];
+            if (pos) return { ...pos, autoShift: true };
+        }
+
+        key = key.toUpperCase();
 
         // Special mappings
         if (key === 'ESCAPE') key = 'CLEAR';
         if (key === 'F12' || key === 'PAUSE') key = 'BREAK';
-        if (key === 'BACKSPACE') key = 'ARROWLEFT'; // CoCo used left arrow for backspace
+        if (key === 'BACKSPACE') key = 'ARROWLEFT';
         if (key === 'SHIFT' || key === 'SHIFTLEFT' || key === 'SHIFTRIGHT') key = 'SHIFT';
 
-        return KEY_MAP[key] || null;
+        const pos = KEY_MAP[key];
+        if (pos) return { ...pos, autoShift: false };
+        return null;
     }
 }

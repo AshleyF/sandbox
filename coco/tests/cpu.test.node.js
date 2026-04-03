@@ -876,6 +876,21 @@ test('Unscanned columns return all high', () => {
     eq(rows, 0x7F, 'all rows high');
 });
 
+test('Shifted key " maps to SHIFT+2', () => {
+    const kb = new Keyboard();
+    kb.keyDown({ key: '"', preventDefault: () => {} });
+    // SHIFT is row 6, col 7
+    const shiftRows = kb.readRows(0x7F); // col 7 selected
+    eq(shiftRows & 0x40, 0x00, 'SHIFT pressed (row 6)');
+    // '2' is row 4, col 2
+    const twoRows = kb.readRows(0xFB); // col 2 selected
+    eq(twoRows & 0x10, 0x00, '2 pressed (row 4)');
+    // Release
+    kb.keyUp({ key: '"', preventDefault: () => {} });
+    const afterRows = kb.readRows(0x7F);
+    eq(afterRows & 0x40, 0x40, 'SHIFT released');
+});
+
 // ===================================================================
 // VDG Tests
 // ===================================================================
