@@ -137,15 +137,70 @@ export class CoCo {
         while (executed < CYCLES_PER_FRAME) {
             const pc = this.cpu.pc;
 
-            // ROM intercept: byte-IN at $A749 (CLOAD reads)
-            if (this.cassette.interceptEnabled && this.cassette.motorOn &&
-                pc === 0xA749 && this.cassette.playBuffer &&
+            // ROM intercept: CSRDON (cassette sync) at $A77C
+            // Skip the FSK leader sync — just turn motor on and return
+            if (this.cassette.interceptEnabled && pc === 0xA77C &&
+                this.cassette.playBuffer &&
                 this.cassette.playPos < this.cassette.playBuffer.length) {
-                const byte = this.cassette.nextByte();
-                if (byte >= 0) {
-                    this.cpu.a = byte;
-                    this.cpu.pc = 0xA754; // skip to RTS
-                    executed += 84;
+                // Turn motor on (what A7CA does)
+                this.cassette.setMotor(true);
+                // Set the speed flag that sync would have calibrated
+                this.mem.write(0x84, 0x00); // speed flag
+                this.mem.write(0x90, 0x12); // threshold high
+                this.mem.write(0x91, 0x08); // threshold low
+                this.cpu.pc = 0xA796; // RTS at end of CSRDON
+                executed += 100;
+                continue;
+            }
+
+            // ROM intercept: BLKIN (block-in) at $A70B
+            // Replaces the entire block-read including leader/sync detection
+            if (this.cassette.interceptEnabled &&
+                pc === 0xA70B && this.cassette.playBuffer &&
+                this.cassette.playPos < this.cassette.playBuffer.length) {
+
+                // Skip leader ($55) bytes
+                while (this.cassette.playPos < this.cassette.playBuffer.length &&
+                       this.cassette.playBuffer[this.cassette.playPos] === 0x55) {
+                    this.cassette.playPos++;
+                }
+
+                if (this.cassette.playPos < this.cassette.playBuffer.length &&
+                    this.cassette.playBuffer[this.cassette.playPos] === 0x3C) {
+                    this.cassette.playPos++; // skip sync byte
+
+                    const blockType = this.cassette.nextByte();
+                    const blockLen = this.cassette.nextByte();
+
+                    this.mem.write(0x7C, blockType);
+                    this.mem.write(0x7D, blockLen);
+
+                    let checksum = (blockType + blockLen) & 0xFF;
+                    let x = (this.mem.read(0x7E) << 8) | this.mem.read(0x7F);
+
+                    for (let i = 0; i < blockLen; i++) {
+                        const byte = this.cassette.nextByte();
+                        if (byte < 0) break;
+                        this.mem.write(x, byte);
+                        x = (x + 1) & 0xFFFF;
+                        checksum = (checksum + byte) & 0xFF;
+                    }
+
+                    const expectedChecksum = this.cassette.nextByte();
+
+                    // Skip trailer
+                    if (this.cassette.playPos < this.cassette.playBuffer.length &&
+                        this.cassette.playBuffer[this.cassette.playPos] === 0x55) {
+                        this.cassette.playPos++;
+                    }
+
+                    // Error flag: 0=OK
+                    const ok = expectedChecksum >= 0 && (checksum === (expectedChecksum & 0xFF));
+                    this.mem.write(0x81, ok ? 0 : 1);
+
+                    this.cpu.x = x;
+                    this.cpu.pc = 0xA748; // RTS
+                    executed += 500;
                     continue;
                 }
             }
