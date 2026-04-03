@@ -336,21 +336,24 @@ export class CoCo {
                 continue;
             }
 
-            // Skip cassette delay loops in BASIC ROM
-            // $A7D8: WRLDR — write leader + data. Skip entirely.
-            if (pc === 0xA7D8) { cpu.pc = 0xA7E4; executed += 100; continue; } // jump to RTS
-            // $A7CA: CASON — motor on + delay. Skip.
-            if (pc === 0xA7CA) {
-                const val = this.mem.read(0xFF21) | 0x08;
-                this.mem.write(0xFF21, val);
-                this.cpu.pc = 0xA7D7; executed += 100; continue;
-            }
-            // $A7D3: LEAX -1,X; BNE (delay loop). Skip past the BNE.
-            if (pc === 0xA7D3) { this.cpu.x = 0; this.cpu.pc = 0xA7D7; executed += 100; continue; }
-            // $A964: Leader tone write loop. Skip.
-            if (pc === 0xA964) {
-                this.mem.write(0x8D, 0); this.mem.write(0x8E, 0);
-                this.cpu.x = 0; this.cpu.pc = 0xA970; executed += 100; continue;
+            // Skip cassette delay loops — ONLY during cassette/cartridge operations
+            if (this.cassette.motorOn || this.cassette.recording ||
+                (this.mem.cartrom && !this._cartStarted)) {
+                // $A7D8: WRLDR — write leader + data. Skip entirely.
+                if (pc === 0xA7D8) { cpu.pc = 0xA7E4; executed += 100; continue; }
+                // $A7CA: CASON — motor on + delay. Skip delay.
+                if (pc === 0xA7CA) {
+                    const val = this.mem.read(0xFF21) | 0x08;
+                    this.mem.write(0xFF21, val);
+                    this.cpu.pc = 0xA7D7; executed += 100; continue;
+                }
+                // $A7D3: LEAX -1,X; BNE (delay loop). Skip.
+                if (pc === 0xA7D3) { this.cpu.x = 0; this.cpu.pc = 0xA7D7; executed += 100; continue; }
+                // $A964: Leader tone write loop. Skip.
+                if (pc === 0xA964) {
+                    this.mem.write(0x8D, 0); this.mem.write(0x8E, 0);
+                    this.cpu.x = 0; this.cpu.pc = 0xA970; executed += 100; continue;
+                }
             }
 
             const c = this.cpu.step();
