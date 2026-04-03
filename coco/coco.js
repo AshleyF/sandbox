@@ -45,8 +45,8 @@ export class CoCo {
         // PIA1 CA2 (ctrl A bits 3-5) = cassette motor control
         const origReadPia1 = this.pia1.read.bind(this.pia1);
         this.pia1.read = (offset) => {
-            if (offset === 0 && (this.pia1.ctrlA & 0x04)) {
-                // Reading port A data — inject cassette bit into bit 0
+            if (offset === 0 && (this.pia1.ctrlA & 0x04) && this.cassette.motorOn) {
+                // Reading port A data while motor is on — inject cassette bit
                 const cassBit = this.cassette.readBit();
                 this.pia1.inputA = (this.pia1.inputA & 0xFE) | cassBit;
             }
@@ -55,10 +55,16 @@ export class CoCo {
         const origWritePia1 = this.pia1.write.bind(this.pia1);
         this.pia1.write = (offset, val) => {
             origWritePia1(offset, val);
-            // CA2 motor control: ctrl A bits 5,4,3 determine CA2 output
+            // CA2 motor control: when ctrl A configures CA2 as output
+            // Bits 5,4 = 1,1 → manual output mode, bit 3 = CA2 level
             if (offset === 1) {
-                const ca2Out = !!(val & 0x08) && !!(val & 0x20) && !!(val & 0x10);
-                this.cassette.setMotor(ca2Out);
+                if ((val & 0x30) === 0x30) {
+                    // Manual output mode: motor = bit 3
+                    this.cassette.setMotor(!!(val & 0x08));
+                } else if ((val & 0x20) === 0) {
+                    // CA2 is input mode or interrupt mode → motor off
+                    this.cassette.setMotor(false);
+                }
             }
         };
 

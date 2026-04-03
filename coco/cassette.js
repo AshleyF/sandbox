@@ -389,9 +389,10 @@ export class Cassette {
     }
 
     // Advance the FSK signal by 'n' CPU cycles
-    // Call this from the main loop each step
+    // Only advances when motor is on (BASIC turns motor on before reading)
     advanceCycles(n) {
-        if (!this.motorOn || this._currentBitQueue.length === 0) return;
+        if (!this.motorOn) return;
+        if (this._currentBitQueue.length === 0) return;
         if (this._queuePos >= this._currentBitQueue.length) return;
 
         this.cyclesInHalf += n;
