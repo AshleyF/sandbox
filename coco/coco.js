@@ -176,7 +176,9 @@ export class CoCo {
                     this.mem.write(0x7D, blockLen);
 
                     let checksum = (blockType + blockLen) & 0xFF;
-                    let x = (this.mem.read(0x7E) << 8) | this.mem.read(0x7F);
+                    // Use the ROM's buffer at $01DA for data blocks
+                    // (A176 reads from $7A which A635 sets to $01DA)
+                    let x = 0x01DA;
 
                     for (let i = 0; i < blockLen; i++) {
                         const byte = this.cassette.nextByte();
