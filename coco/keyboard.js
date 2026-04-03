@@ -157,12 +157,18 @@ export class Keyboard {
     _mapEvent(event) {
         let key = event.key;
 
-        // Check for shifted symbols first
+        // Check for shifted symbols first (CoCo needs SHIFT for these)
         if (SHIFT_MAP[key]) {
             const baseKey = SHIFT_MAP[key].toUpperCase();
             const pos = KEY_MAP[baseKey];
-            if (pos) return { ...pos, autoShift: true };
+            if (pos) return { ...pos, autoShift: true, suppressShift: false };
         }
+
+        // Keys that are unshifted on CoCo but shifted on PC keyboard
+        // When browser sends these, the physical Shift is already held
+        // so we need to suppress the CoCo SHIFT
+        const UNSHIFTED_ON_COCO = ':';
+        const needsSuppressShift = UNSHIFTED_ON_COCO.includes(key);
 
         key = key.toUpperCase();
 
@@ -173,7 +179,7 @@ export class Keyboard {
         if (key === 'SHIFT' || key === 'SHIFTLEFT' || key === 'SHIFTRIGHT') key = 'SHIFT';
 
         const pos = KEY_MAP[key];
-        if (pos) return { ...pos, autoShift: false };
+        if (pos) return { ...pos, autoShift: false, suppressShift: needsSuppressShift };
         return null;
     }
 }
