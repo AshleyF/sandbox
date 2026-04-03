@@ -173,17 +173,21 @@ export class CoCo {
     stepFrame() {
         this.joystick.update();
         let executed = 0;
+
+        // Check interrupts once at start of frame
+        this.cpu.checkInterrupts();
+
         while (executed < CYCLES_PER_FRAME) {
             // Keep CART signal active until cartridge code starts running
             if (this.mem.cartrom && !this._cartStarted) {
                 this.pia1.irqB1 = true;
                 this.cpu.firqLine = true;
+                this.cpu.checkInterrupts();
                 if (this.cpu.pc >= 0xC000 && this.cpu.pc < 0xFF00) {
                     this._cartStarted = true;
                     this.cpu.firqLine = false;
                 }
             }
-            this.cpu.checkInterrupts();
             const pc = this.cpu.pc;
 
             // ROM intercept: CSRDON (cassette sync) at $A77C

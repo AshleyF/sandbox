@@ -113,6 +113,9 @@ export class Keyboard {
             // Press SHIFT + base key
             this.matrix[6] |= (1 << 7); // SHIFT
             this._heldShifted.add(event.key);
+        } else if (result.suppressShift) {
+            // Key is directly mapped but PC required Shift — suppress CoCo SHIFT
+            this.matrix[6] &= ~(1 << 7);
         }
         this.matrix[result.row] |= (1 << result.col);
         return true;
