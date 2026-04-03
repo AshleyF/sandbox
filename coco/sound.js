@@ -7,6 +7,7 @@ export class Sound {
         this.enabled = false;
         this.dacValue = 0;
         this.soundEnabled = false;
+        this._dacActive = false;
 
         this._cycleAccum = 0;
         this._cyclesPerSample = 894886 / 44100; // ~20.3
@@ -27,23 +28,27 @@ export class Sound {
     }
 
     setDAC(value) {
-        this.dacValue = (value >> 2) & 0x3F;
+        const newVal = (value >> 2) & 0x3F;
+        if (newVal !== this.dacValue) {
+            this.dacValue = newVal;
+            this._dacActive = true;
+        }
     }
 
     setSoundEnable(enabled) {
         this.soundEnabled = enabled;
+        if (!enabled) this._dacActive = false;
     }
 
     addCycles(cycles) {
-        if (!this.enabled) return;
-
+        if (!this.enabled || !this._dacActive) return;
         this._cycleAccum += cycles;
+        if (this._cycleAccum < this._cyclesPerSample) return;
+
+        const sample = ((this.dacValue / 31.5) - 1.0) * 0.3;
         while (this._cycleAccum >= this._cyclesPerSample) {
             this._cycleAccum -= this._cyclesPerSample;
             if (this._sampleCount < this._sampleBuffer.length) {
-                const sample = this.soundEnabled
-                    ? ((this.dacValue / 31.5) - 1.0) * 0.3
-                    : 0;
                 this._sampleBuffer[this._sampleCount++] = sample;
             }
         }
@@ -51,26 +56,24 @@ export class Sound {
 
     // Call once per frame to flush accumulated samples to Web Audio
     flush() {
-        if (!this.enabled || !this.audioCtx || this._sampleCount === 0) return;
+        if (!this.enabled || !this.audioCtx || this._sampleCount === 0) {
+            this._sampleCount = 0;
+            return;
+        }
 
+        // Limit buffer size to prevent resource exhaustion
+        const count = Math.min(this._sampleCount, 4096);
         const ctx = this.audioCtx;
-        const buf = ctx.createBuffer(1, this._sampleCount, 44100);
+        const buf = ctx.createBuffer(1, count, 44100);
         const data = buf.getChannelData(0);
-        for (let i = 0; i < this._sampleCount; i++) {
+        for (let i = 0; i < count; i++) {
             data[i] = this._sampleBuffer[i];
         }
 
         const source = ctx.createBufferSource();
         source.buffer = buf;
         source.connect(ctx.destination);
-
-        // Schedule playback at the right time to avoid gaps
-        const now = ctx.currentTime;
-        if (!this._nextPlayTime || this._nextPlayTime < now) {
-            this._nextPlayTime = now;
-        }
-        source.start(this._nextPlayTime);
-        this._nextPlayTime += buf.duration;
+        source.start();
 
         this._sampleCount = 0;
     }
