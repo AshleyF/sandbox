@@ -180,6 +180,34 @@ document.addEventListener('keyup', (e) => {
     if (coco.keyboard.keyUp(e)) e.preventDefault();
 });
 
+// Auto-load ROMs from roms/ directory on startup
+async function autoLoadROMs() {
+    const romFiles = [
+        { url: 'roms/bas13.rom', base: 0xA000, name: 'Color BASIC 1.3' },
+        { url: 'roms/extbas11.rom', base: 0x8000, name: 'Extended BASIC 1.1' },
+    ];
+    const loaded = [];
+    for (const r of romFiles) {
+        try {
+            const resp = await fetch(r.url);
+            if (resp.ok) {
+                const data = new Uint8Array(await resp.arrayBuffer());
+                coco.mem.loadROM(data, r.base);
+                loaded.push(r.name);
+            }
+        } catch (e) { /* ROM not found, skip */ }
+    }
+    if (loaded.length > 0) {
+        coco.reset();
+        coco.start();
+        startTapeStatus();
+        status.textContent = `Loaded: ${loaded.join(', ')}. Running!`;
+    } else {
+        status.textContent = 'No ROMs found in roms/. Click Load ROM or Test ROM.';
+    }
+}
+autoLoadROMs();
+
 document.getElementById('loadRom')?.addEventListener('click', () => {
     document.getElementById('romFile')?.click();
 });
@@ -201,12 +229,15 @@ document.getElementById('reset')?.addEventListener('click', () => {
 
 document.getElementById('run')?.addEventListener('click', () => {
     coco.start();
+    startTapeStatus();
     status.textContent = 'Running...';
 });
 
 document.getElementById('stop')?.addEventListener('click', () => {
     coco.stop();
+    stopTapeStatus();
     updateDebug();
+    updateTapeStatus();
     status.textContent = `Stopped. ${coco.dbg.dumpRegisters().split('\n')[0]}`;
 });
 
@@ -237,6 +268,50 @@ function updateDebug() {
     debugEl.textContent = regs + '\n\n' + dis;
 }
 
+// === Tape status display ===
+const tapeLabel = document.getElementById('tape-label');
+const tapeMotor = document.getElementById('tape-motor');
+const tapeSignal = document.getElementById('tape-signal');
+const tapeBar = document.getElementById('tape-bar');
+const tapePct = document.getElementById('tape-pct');
+const BAR_WIDTH = 40;
+
+let tapeStatusInterval = null;
+function startTapeStatus() {
+    if (tapeStatusInterval) return;
+    tapeStatusInterval = setInterval(updateTapeStatus, 100);
+}
+function stopTapeStatus() {
+    if (tapeStatusInterval) { clearInterval(tapeStatusInterval); tapeStatusInterval = null; }
+}
+
+function updateTapeStatus() {
+    const c = coco.cassette;
+    if (!c) return;
+
+    // Motor
+    if (tapeMotor) {
+        tapeMotor.textContent = c.motorOn ? '▶ Motor ON' : '⏹ Motor off';
+        tapeMotor.style.color = c.motorOn ? '#0f0' : '#666';
+    }
+
+    // Signal
+    if (tapeSignal) {
+        tapeSignal.textContent = 'Signal: ' + (c.signalHigh ? '▀' : '▄');
+        tapeSignal.style.color = c.motorOn ? '#0f0' : '#555';
+    }
+
+    // Progress bar
+    const progress = c.progress;
+    const filled = Math.round(progress * BAR_WIDTH);
+    if (tapeBar) {
+        tapeBar.textContent = '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
+    }
+    if (tapePct) {
+        tapePct.textContent = Math.round(progress * 100) + '%';
+    }
+}
+
 // === Cassette UI ===
 document.getElementById('loadTape')?.addEventListener('click', () => {
     document.getElementById('tapeFile')?.click();
@@ -255,6 +330,8 @@ document.getElementById('tapeFile')?.addEventListener('change', async (e) => {
         coco.cassette.loadCAS(data);
         status.textContent = `CAS tape loaded: ${file.name}`;
     }
+    if (tapeLabel) tapeLabel.textContent = `🎵 Tape: ${file.name}`;
+    updateTapeStatus();
 });
 
 document.getElementById('saveTapeCAS')?.addEventListener('click', () => {
