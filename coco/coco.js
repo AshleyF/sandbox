@@ -336,9 +336,8 @@ export class CoCo {
                 continue;
             }
 
-            // Skip cassette delay loops — ONLY during cassette/cartridge operations
-            if (this.cassette.motorOn || this.cassette.recording ||
-                (this.mem.cartrom && !this._cartStarted)) {
+            // Skip cassette delay loops — during cassette ops or when cartridge is loaded
+            if (this.cassette.motorOn || this.cassette.recording || this.mem.cartrom) {
                 // $A7D8: WRLDR — write leader + data. Skip entirely.
                 if (pc === 0xA7D8) { cpu.pc = 0xA7E4; executed += 100; continue; }
                 // $A7CA: CASON — motor on + delay. Skip delay.
