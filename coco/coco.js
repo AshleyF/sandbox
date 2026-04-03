@@ -179,7 +179,8 @@ export class CoCo {
                     this.mem.write(0x7D, blockLen);
 
                     let checksum = (blockType + blockLen) & 0xFF;
-                    let x = 0x01DA;
+                    // Write to wherever $7E-$7F points (ROM's BLKIN does LDX <$7E)
+                    let x = (this.mem.read(0x7E) << 8) | this.mem.read(0x7F);
 
                     for (let i = 0; i < blockLen; i++) {
                         const byte = this.cassette.nextByte();
@@ -238,9 +239,8 @@ export class CoCo {
                     this.mem.write(0x7D, blockLen);
 
                     let checksum = (blockType + blockLen) & 0xFF;
-                    // Use the ROM's buffer at $01DA for data blocks
-                    // (A176 reads from $7A which A635 sets to $01DA)
-                    let x = 0x01DA;
+                    // Write to wherever $7E-$7F points (same as ROM's BLKIN)
+                    let x = (this.mem.read(0x7E) << 8) | this.mem.read(0x7F);
 
                     for (let i = 0; i < blockLen; i++) {
                         const byte = this.cassette.nextByte();
