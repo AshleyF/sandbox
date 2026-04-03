@@ -8,6 +8,7 @@ import { SAM } from './sam.js';
 import { VDG } from './vdg.js';
 import { Keyboard } from './keyboard.js';
 import { Joystick } from './joystick.js';
+import { Sound } from './sound.js';
 import { Debugger } from './debug.js';
 import { Cassette, casToWAV, buildCAS } from './cassette.js';
 
@@ -22,6 +23,7 @@ export class CoCo {
         this.keyboard = new Keyboard();
         this.joystick = new Joystick();
         this.cassette = new Cassette();
+        this.sound = new Sound();
         this.vdg = new VDG(addr => this.mem.read(addr));
 
         // Wire PIAs and SAM into memory bus
@@ -81,14 +83,21 @@ export class CoCo {
         this.pia1.write = (offset, val) => {
             origWritePia1(offset, val);
             // CA2 motor control: when ctrl A configures CA2 as output
-            // Bits 5,4 = 1,1 → manual output mode, bit 3 = CA2 level
             if (offset === 1) {
                 if ((val & 0x30) === 0x30) {
-                    // Manual output mode: motor = bit 3
                     this.cassette.setMotor(!!(val & 0x08));
                 } else if ((val & 0x20) === 0) {
-                    // CA2 is input mode or interrupt mode → motor off
                     this.cassette.setMotor(false);
+                }
+            }
+            // Port A write: update DAC for sound (bits 2-7)
+            if (offset === 0 && (this.pia1.ctrlA & 0x04)) {
+                this.sound.setDAC(val);
+            }
+            // CB2 sound enable: ctrl B bits 5,4,3
+            if (offset === 3) {
+                if ((val & 0x30) === 0x30) {
+                    this.sound.setSoundEnable(!!(val & 0x08));
                 }
             }
         };
@@ -362,6 +371,7 @@ export class CoCo {
             const c = this.cpu.step();
             executed += c;
             this.cassette.advanceCycles(c);
+            this.sound.addCycles(c);
         }
         this.renderFrame();
         this.cpu.irqLine = false;
@@ -694,4 +704,23 @@ document.getElementById('ejectCart')?.addEventListener('click', () => {
     coco.start();
     startTapeStatus();
     status.textContent = 'Cartridge ejected. Rebooted to BASIC.';
+});
+
+// === Sound UI ===
+const soundBtn = document.getElementById('soundToggle');
+soundBtn?.addEventListener('click', () => {
+    if (!coco.sound.enabled) {
+        coco.sound.init();
+        soundBtn.textContent = '🔊 Sound';
+        status.textContent = 'Sound enabled. Try SOUND 100,5 or PLAY"CDEFGAB"';
+    } else {
+        // Toggle mute
+        if (coco.sound.audioCtx.state === 'running') {
+            coco.sound.audioCtx.suspend();
+            soundBtn.textContent = '🔇 Sound';
+        } else {
+            coco.sound.audioCtx.resume();
+            soundBtn.textContent = '🔊 Sound';
+        }
+    }
 });
