@@ -133,16 +133,38 @@ export class CoCo {
 
     stepFrame() {
         this.cpu.checkInterrupts();
-        // Run cycle-by-cycle so cassette FSK signal stays in sync
         let executed = 0;
         while (executed < CYCLES_PER_FRAME) {
+            const pc = this.cpu.pc;
+
+            // ROM intercept: byte-IN at $A749 (CLOAD reads)
+            if (this.cassette.interceptEnabled && this.cassette.motorOn &&
+                pc === 0xA749 && this.cassette.playBuffer &&
+                this.cassette.playPos < this.cassette.playBuffer.length) {
+                const byte = this.cassette.nextByte();
+                if (byte >= 0) {
+                    this.cpu.a = byte;
+                    this.cpu.pc = 0xA754; // skip to RTS
+                    executed += 84;
+                    continue;
+                }
+            }
+
+            // ROM intercept: byte-OUT at $A82A (CSAVE writes)
+            if (this.cassette.interceptEnabled && this.cassette.recording && pc === 0xA82A) {
+                // A register has the byte to write
+                this.cassette.recordBuffer.push(this.cpu.a);
+                this.cpu.pc = 0xA85A; // skip to PULS A,PC
+                executed += 84;
+                continue;
+            }
+
             const c = this.cpu.step();
             executed += c;
             this.cassette.advanceCycles(c);
         }
         this.renderFrame();
         this.cpu.irqLine = false;
-        // Reset CB1 high between frames (so next falling edge triggers)
         this.pia0.setCB1(true);
     }
 
@@ -291,24 +313,38 @@ function updateTapeStatus() {
 
     // Motor
     if (tapeMotor) {
-        tapeMotor.textContent = c.motorOn ? '▶ Motor ON' : '⏹ Motor off';
-        tapeMotor.style.color = c.motorOn ? '#0f0' : '#666';
+        if (c.recording) {
+            tapeMotor.textContent = '⏺ RECORDING';
+            tapeMotor.style.color = '#f44';
+        } else if (c.motorOn) {
+            tapeMotor.textContent = '▶ Motor ON';
+            tapeMotor.style.color = '#0f0';
+        } else {
+            tapeMotor.textContent = '⏹ Motor off';
+            tapeMotor.style.color = '#666';
+        }
     }
 
     // Signal
     if (tapeSignal) {
-        tapeSignal.textContent = 'Signal: ' + (c.signalHigh ? '▀' : '▄');
-        tapeSignal.style.color = c.motorOn ? '#0f0' : '#555';
+        if (c.recording) {
+            tapeSignal.textContent = 'Bytes: ' + c.recordBuffer.length;
+            tapeSignal.style.color = '#f44';
+        } else {
+            tapeSignal.textContent = 'Signal: ' + (c.signalHigh ? '▀' : '▄');
+            tapeSignal.style.color = c.motorOn ? '#0f0' : '#555';
+        }
     }
 
     // Progress bar
-    const progress = c.progress;
-    const filled = Math.round(progress * BAR_WIDTH);
-    if (tapeBar) {
-        tapeBar.textContent = '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
-    }
-    if (tapePct) {
-        tapePct.textContent = Math.round(progress * 100) + '%';
+    if (c.recording) {
+        if (tapeBar) tapeBar.textContent = '⏺'.repeat(Math.min(BAR_WIDTH, Math.floor(c.recordBuffer.length / 10)));
+        if (tapePct) tapePct.textContent = c.recordBuffer.length + ' bytes';
+    } else {
+        const progress = c.progress;
+        const filled = Math.round(progress * BAR_WIDTH);
+        if (tapeBar) tapeBar.textContent = '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
+        if (tapePct) tapePct.textContent = Math.round(progress * 100) + '%';
     }
 }
 
@@ -334,13 +370,28 @@ document.getElementById('tapeFile')?.addEventListener('change', async (e) => {
     updateTapeStatus();
 });
 
+document.getElementById('recordTape')?.addEventListener('click', () => {
+    if (coco.cassette.recording) {
+        // Stop recording
+        coco.cassette.recording = false;
+        status.textContent = `Recording stopped. ${coco.cassette.recordBuffer.length} bytes. Click Save CAS or Save WAV.`;
+    } else {
+        // Start recording
+        coco.cassette.startRecording();
+        if (tapeLabel) tapeLabel.textContent = '🎵 Tape: ⏺ Recording armed';
+        status.textContent = 'Recording armed. Type CSAVE"NAME" in BASIC.';
+    }
+    updateTapeStatus();
+});
+
 document.getElementById('saveTapeCAS')?.addEventListener('click', () => {
-    // Dump current cassette record buffer (or playback buffer) as CAS
     const data = coco.cassette.recording
-        ? coco.cassette.stopRecording()
-        : (coco.cassette.playBuffer || new Uint8Array(0));
+        ? new Uint8Array(coco.cassette.recordBuffer)
+        : (coco.cassette.recordBuffer.length > 0
+            ? new Uint8Array(coco.cassette.recordBuffer)
+            : (coco.cassette.playBuffer || new Uint8Array(0)));
     if (data.length === 0) {
-        status.textContent = 'No tape data to save';
+        status.textContent = 'No tape data to save. Click Record, then CSAVE in BASIC.';
         return;
     }
     downloadBlob(new Blob([data]), 'program.cas');
@@ -349,10 +400,12 @@ document.getElementById('saveTapeCAS')?.addEventListener('click', () => {
 
 document.getElementById('saveTapeWAV')?.addEventListener('click', () => {
     const data = coco.cassette.recording
-        ? coco.cassette.stopRecording()
-        : (coco.cassette.playBuffer || new Uint8Array(0));
+        ? new Uint8Array(coco.cassette.recordBuffer)
+        : (coco.cassette.recordBuffer.length > 0
+            ? new Uint8Array(coco.cassette.recordBuffer)
+            : (coco.cassette.playBuffer || new Uint8Array(0)));
     if (data.length === 0) {
-        status.textContent = 'No tape data to save';
+        status.textContent = 'No tape data to save. Click Record, then CSAVE in BASIC.';
         return;
     }
     const wav = casToWAV(data);

@@ -333,18 +333,16 @@ export class Cassette {
         this.motorOn = false;
 
         // FSK signal generation for ROM compatibility
-        // The ROM polls PIA1 PA0 in a tight loop counting cycles between transitions
-        // CPU clock: 894,886 Hz. At 1200 baud:
-        //   Bit 0: 1 cycle of 1200 Hz → period = 745.7 CPU cycles, half = 373
-        //   Bit 1: 2 cycles of 2400 Hz → period = 372.9 CPU cycles, half = 186
         this.cpuCycles = 0;
-        this.signalPhase = 0;      // current position within FSK signal
-        this.signalHigh = false;   // current output level (what PIA1 PA0 reads)
-        this.halfPeriod = 373;     // current half-period in CPU cycles
-        this.cyclesInHalf = 0;     // cycles elapsed in current half-period
+        this.signalPhase = 0;
+        this.signalHigh = false;
+        this.halfPeriod = 373;
+        this.cyclesInHalf = 0;
+        this._currentBitQueue = [];
 
-        // Bit stream from CAS data
-        this._currentBitQueue = []; // pre-expanded to FSK half-periods
+        // ROM intercept mode: feed bytes directly to the ROM's byte-in routine
+        // This bypasses FSK timing entirely for reliable loading
+        this.interceptEnabled = true;
     }
 
     // Load a CAS file for playback
@@ -365,8 +363,12 @@ export class Cassette {
     _expandToFSK() {
         this._currentBitQueue = [];
         if (!this.playBuffer) return;
-        const HALF_ZERO = 373;  // half-period for 0 bit (1200 Hz)
-        const HALF_ONE = 186;   // half-period for 1 bit (2400 Hz)
+        // CPU runs at 894,886 Hz. At 1200 baud:
+        // 0-bit: 1 cycle of 1200 Hz → full period = 746 cycles → half = 373
+        // 1-bit: 2 cycles of 2400 Hz → full period = 373 cycles → half = 186
+        // Each bit is represented by 2 half-periods (0-bit) or 4 half-periods (1-bit)
+        const HALF_ZERO = 373;
+        const HALF_ONE = 186;
 
         for (let i = 0; i < this.playBuffer.length; i++) {
             const byte = this.playBuffer[i];
@@ -406,6 +408,12 @@ export class Cassette {
                 break; // end of tape
             }
         }
+    }
+
+    // Get next byte from tape (for ROM intercept mode)
+    nextByte() {
+        if (!this.playBuffer || this.playPos >= this.playBuffer.length) return -1;
+        return this.playBuffer[this.playPos++];
     }
 
     // Called by PIA1 to read cassette signal level (port A bit 0)
@@ -502,6 +510,15 @@ export class Cassette {
 
     // Motor control (PIA1 CA2)
     setMotor(on) {
+        if (on && !this.motorOn) {
+            // Motor just turned on — rewind to start
+            this._queuePos = 0;
+            this.cyclesInHalf = 0;
+            this.signalHigh = false;
+            if (this._currentBitQueue.length > 0) {
+                this.halfPeriod = this._currentBitQueue[0];
+            }
+        }
         this.motorOn = on;
     }
 
