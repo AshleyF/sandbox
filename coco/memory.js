@@ -10,6 +10,7 @@ export class Memory {
         this.pia0 = null;
         this.pia1 = null;
         this.sam = null;
+        this.disk = null;  // DiskController instance
     }
 
     read(addr) {
@@ -21,6 +22,10 @@ export class Memory {
         // PIA 1 ($FF20-$FF3F, partially decoded — mirrors every 4 bytes)
         if (addr >= 0xFF20 && addr <= 0xFF3F && this.pia1) {
             return this.pia1.read(addr & 0x03);
+        }
+        // Disk controller ($FF40-$FF5F)
+        if (addr >= 0xFF40 && addr <= 0xFF5F && this.disk) {
+            return this.disk.read(addr & 0x0F);
         }
         // SAM (write-only in hardware, reads return $FF)
         if (addr >= 0xFFC0 && addr <= 0xFFDF) {
@@ -57,6 +62,11 @@ export class Memory {
         // PIA 1 ($FF20-$FF3F, partially decoded)
         if (addr >= 0xFF20 && addr <= 0xFF3F && this.pia1) {
             this.pia1.write(addr & 0x03, val);
+            return;
+        }
+        // Disk controller ($FF40-$FF5F)
+        if (addr >= 0xFF40 && addr <= 0xFF5F && this.disk) {
+            this.disk.write(addr & 0x0F, val);
             return;
         }
         // SAM registers

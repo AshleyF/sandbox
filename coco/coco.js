@@ -10,6 +10,7 @@ import { Keyboard } from './keyboard.js';
 import { Joystick } from './joystick.js';
 import { Debugger } from './debug.js';
 import { Cassette, casToWAV, buildCAS } from './cassette.js';
+import { DiskController } from './disk.js';
 
 const CYCLES_PER_FRAME = 14914; // ~894,886 Hz / 60 fps
 
@@ -22,12 +23,14 @@ export class CoCo {
         this.keyboard = new Keyboard();
         this.joystick = new Joystick();
         this.cassette = new Cassette();
+        this.disk = new DiskController();
         this.vdg = new VDG(addr => this.mem.read(addr));
 
         // Wire PIAs and SAM into memory bus
         this.mem.pia0 = this.pia0;
         this.mem.pia1 = this.pia1;
         this.mem.sam = this.sam;
+        this.mem.disk = this.disk;
 
         // Wire keyboard and joystick to PIA0
         // PIA0 port B selects keyboard columns, port A reads rows
@@ -97,6 +100,11 @@ export class CoCo {
             addr => this.mem.read(addr),
             (addr, val) => this.mem.write(addr, val)
         );
+
+        // Wire disk controller NMI to CPU
+        this.disk.onNMI = (active) => {
+            this.cpu.nmiLine = active;
+        };
         this.dbg = new Debugger(this.cpu, addr => this.mem.read(addr));
         this.running = false;
         this.frameId = null;
@@ -127,6 +135,14 @@ export class CoCo {
 
     removeCartridge() {
         this.mem.removeCartridge();
+    }
+
+    loadDisk(driveNum, data) {
+        this.disk.loadDisk(driveNum, data);
+    }
+
+    ejectDisk(driveNum) {
+        this.disk.ejectDisk(driveNum);
     }
 
     reset() {
@@ -659,4 +675,23 @@ document.getElementById('ejectCart')?.addEventListener('click', () => {
     coco.start();
     startTapeStatus();
     status.textContent = 'Cartridge ejected. Rebooted to BASIC.';
+});
+
+// === Disk UI ===
+document.getElementById('loadDisk')?.addEventListener('click', () => {
+    document.getElementById('diskFile')?.click();
+});
+
+document.getElementById('diskFile')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const data = new Uint8Array(await file.arrayBuffer());
+    coco.loadDisk(0, data);
+    status.textContent = `Disk loaded: ${file.name} (${data.length} bytes) in drive 0`;
+    e.target.value = '';
+});
+
+document.getElementById('ejectDisk')?.addEventListener('click', () => {
+    coco.ejectDisk(0);
+    status.textContent = 'Disk ejected from drive 0.';
 });
