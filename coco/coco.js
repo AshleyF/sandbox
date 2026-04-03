@@ -577,13 +577,8 @@ document.getElementById('tapeFile')?.addEventListener('change', async (e) => {
     const data = await file.arrayBuffer();
     const name = file.name.toLowerCase();
 
-    if (name.endsWith('.wav')) {
-        coco.cassette.loadWAV(data);
-        status.textContent = `WAV tape loaded: ${file.name}`;
-    } else {
-        coco.cassette.loadCAS(data);
-        status.textContent = `CAS tape loaded: ${file.name}`;
-    }
+    coco.cassette.loadCAS(data);
+    status.textContent = `Tape loaded: ${file.name}`;
     if (tapeLabel) tapeLabel.textContent = `🎵 Tape: ${file.name}`;
     updateTapeStatus();
 });
