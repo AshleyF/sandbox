@@ -194,6 +194,7 @@ export class CoCo {
     reset() {
         this.cpu.reset();
         this._cartStarted = false;
+        this._cartBootFrames = undefined;
         // Cartridge autostart: assert FIRQ and set PIA1 CB1 flag
         if (this.mem.cartrom) {
             this.pia1.irqB1 = true;
@@ -232,6 +233,7 @@ export class CoCo {
     stepFrame() {
         this.joystick.update();
         this._advanceTyping();
+        if (this._cartBootFrames !== undefined) this._cartBootFrames++;
         let executed = 0;
 
         // Set VSYNC flag at START of frame — BASIC polls this flag during
@@ -253,6 +255,7 @@ export class CoCo {
                 this.cpu.checkInterrupts();
                 if (this.cpu.pc >= 0xC000 && this.cpu.pc < 0xFF00) {
                     this._cartStarted = true;
+                    this._cartBootFrames = 0;
                     this.cpu.firqLine = false;
                 }
             }
@@ -404,8 +407,10 @@ export class CoCo {
                 continue;
             }
 
-            // Skip cassette delay loops — during cassette ops or when cartridge is loaded
-            if (this.cassette.motorOn || this.cassette.recording || this.mem.cartrom) {
+            // Skip cassette delay loops — during cassette ops or first 5 sec of cart boot
+            const cartBooting = this.mem.cartrom && !this._cartStarted ||
+                (this.mem.cartrom && this._cartBootFrames !== undefined && this._cartBootFrames < 300);
+            if (this.cassette.motorOn || this.cassette.recording || cartBooting) {
                 // $A7D8: WRLDR — write leader + data. Skip entirely.
                 if (pc === 0xA7D8) { cpu.pc = 0xA7E4; executed += 100; continue; }
                 // $A7CA: CASON — motor on + delay. Skip delay but charge real cycle cost.
