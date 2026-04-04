@@ -63,8 +63,21 @@ export class Sound {
     }
 
     setSoundEnable(enabled) {
-        this.soundEnabled = enabled;
-        if (!enabled) this._stopTone();
+        if (enabled !== this.soundEnabled) {
+            this.soundEnabled = enabled;
+            // CB2 toggle IS the 1-bit sound output (used by Forth TONE)
+            // Each toggle is a half-cycle edge
+            const now = this._totalCycles;
+            if (this._lastEdgeCycle > 0) {
+                const halfPeriod = now - this._lastEdgeCycle;
+                if (halfPeriod > 100 && halfPeriod < 50000) {
+                    this._halfPeriods.push(halfPeriod);
+                    if (this._halfPeriods.length > 8) this._halfPeriods.shift();
+                    this._lastSoundCycle = now;
+                }
+            }
+            this._lastEdgeCycle = now;
+        }
     }
 
     addCycles(cycles) {
