@@ -138,6 +138,59 @@ export class CoCo {
         this.mem.removeCartridge();
     }
 
+    // Type text into the machine character by character
+    // Each char is held for a few frames, then released, simulating real typing
+    startTyping(text) {
+        this._typeQueue = [];
+        for (const ch of text) {
+            if (ch === '\n' || ch === '\r') {
+                this._typeQueue.push('Enter');
+            } else {
+                this._typeQueue.push(ch);
+            }
+        }
+        this._typeFrameCount = 0;
+        this._typeHoldFrames = 4;
+        this._typeGapFrames = 2;
+        this._typePhase = 'idle'; // 'hold' | 'gap' | 'idle'
+        this._typeCurrentKey = null;
+    }
+
+    // Call each frame to advance the typing simulation
+    _advanceTyping() {
+        if (!this._typeQueue || this._typeQueue.length === 0) {
+            if (this._typePhase === 'hold') {
+                // Release current key
+                this.keyboard.keyUp({ key: this._typeCurrentKey });
+                this._typePhase = 'idle';
+                this._typeCurrentKey = null;
+            }
+            return;
+        }
+
+        this._typeFrameCount++;
+
+        if (this._typePhase === 'idle' || this._typePhase === 'gap') {
+            if (this._typePhase === 'gap' && this._typeFrameCount < this._typeGapFrames) return;
+            // Start next character
+            const key = this._typeQueue.shift();
+            this._typeCurrentKey = key;
+            this.keyboard.keyDown({ key });
+            this._typePhase = 'hold';
+            this._typeFrameCount = 0;
+        } else if (this._typePhase === 'hold') {
+            if (this._typeFrameCount >= this._typeHoldFrames) {
+                this.keyboard.keyUp({ key: this._typeCurrentKey });
+                this._typePhase = 'gap';
+                this._typeFrameCount = 0;
+            }
+        }
+    }
+
+    get isTyping() {
+        return this._typeQueue && (this._typeQueue.length > 0 || this._typePhase === 'hold');
+    }
+
     reset() {
         this.cpu.reset();
         this._cartStarted = false;
@@ -184,6 +237,7 @@ export class CoCo {
 
     stepFrame() {
         this.joystick.update();
+        this._advanceTyping();
         let executed = 0;
 
         // Check interrupts once at start of frame
@@ -717,7 +771,6 @@ soundBtn?.addEventListener('click', () => {
         soundBtn.textContent = '🔊 Sound';
         status.textContent = 'Sound enabled. Try SOUND 100,5 or PLAY"CDEFGAB"';
     } else {
-        // Toggle mute
         if (coco.sound.audioCtx.state === 'running') {
             coco.sound.audioCtx.suspend();
             soundBtn.textContent = '🔇 Sound';
@@ -726,4 +779,36 @@ soundBtn?.addEventListener('click', () => {
             soundBtn.textContent = '🔊 Sound';
         }
     }
+});
+
+// === Paste Code ===
+document.getElementById('pasteCode')?.addEventListener('click', () => {
+    if (coco.isTyping) {
+        // Cancel current typing
+        coco._typeQueue = [];
+        coco.keyboard.clearAll();
+        status.textContent = 'Paste cancelled.';
+        return;
+    }
+
+    const text = prompt(
+        'Paste code to type into the CoCo.\n\n' +
+        'Each line will be typed as if you were at the keyboard.\n' +
+        'Make sure the machine is at a prompt (OK or >) first.\n\n' +
+        'Paste your code:'
+    );
+
+    if (!text || text.trim().length === 0) return;
+
+    // Convert to uppercase (CoCo BASIC is uppercase)
+    const upper = text.toUpperCase();
+
+    // Confirm
+    const lines = upper.split('\n').length;
+    if (!confirm('Type ' + lines + ' line(s) into the CoCo?\n\nFirst line: ' + upper.split('\n')[0].slice(0, 40))) {
+        return;
+    }
+
+    coco.startTyping(upper);
+    status.textContent = 'Typing ' + lines + ' line(s)... click Paste Code again to cancel.';
 });
