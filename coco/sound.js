@@ -44,16 +44,13 @@ export class Sound {
 
         if (!this.soundEnabled) return;
 
-        // Detect zero-crossing (midpoint = 32)
-        const crossUp = oldVal < 32 && newVal >= 32;
-        const crossDown = oldVal >= 32 && newVal < 32;
-
-        if (crossUp || crossDown) {
+        // Detect oscillation: any direction change counts as an edge
+        const goingUp = newVal > oldVal;
+        if (this._lastDirection !== undefined && goingUp !== this._lastDirection) {
+            // Direction changed — this is a half-cycle edge
             const now = this._totalCycles;
             if (this._lastEdgeCycle > 0) {
                 const halfPeriod = now - this._lastEdgeCycle;
-                // Sound half-periods are typically 100-3000 cycles
-                // Joystick sweeps are much faster (< 50 cycles between crossings)
                 if (halfPeriod > 100 && halfPeriod < 5000) {
                     this._halfPeriods.push(halfPeriod);
                     if (this._halfPeriods.length > 8) this._halfPeriods.shift();
@@ -62,6 +59,7 @@ export class Sound {
             }
             this._lastEdgeCycle = now;
         }
+        this._lastDirection = goingUp;
     }
 
     setSoundEnable(enabled) {
