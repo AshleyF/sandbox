@@ -10,7 +10,7 @@ import { Keyboard } from './keyboard.js';
 import { Joystick } from './joystick.js';
 import { Sound } from './sound.js';
 import { Debugger } from './debug.js';
-import { Cassette, casToWAV, buildCAS } from './cassette.js';
+import { Cassette, casToWAV, buildCAS, cartridgeToCAS } from './cassette.js';
 
 const CYCLES_PER_FRAME = 14914; // ~894,886 Hz / 60 fps
 
@@ -772,6 +772,21 @@ document.getElementById('ejectCart')?.addEventListener('click', () => {
     coco.start();
     startTapeStatus();
     status.textContent = 'Cartridge ejected. Rebooted to BASIC.';
+});
+
+document.getElementById('cartToCas')?.addEventListener('click', () => {
+    if (!coco.mem.cartrom) { status.textContent = 'No cartridge loaded.'; return; }
+    const cas = cartridgeToCAS(coco.mem.cartrom);
+    downloadBlob(new Blob([cas]), 'cartridge.cas');
+    status.textContent = 'Saved cartridge as CAS (' + cas.length + ' bytes). CLOADM then EXEC on target machine.';
+});
+
+document.getElementById('cartToWav')?.addEventListener('click', () => {
+    if (!coco.mem.cartrom) { status.textContent = 'No cartridge loaded.'; return; }
+    const cas = cartridgeToCAS(coco.mem.cartrom);
+    const wav = casToWAV(cas);
+    downloadBlob(new Blob([wav], { type: 'audio/wav' }), 'cartridge.wav');
+    status.textContent = 'Saved cartridge as WAV. Play into a real CoCo, then CLOADM and EXEC.';
 });
 
 // === Sound UI ===
