@@ -7,11 +7,11 @@ export class Sound {
         this.enabled = false;
         this.dacValue = 0;
         this.soundEnabled = false;
-        this._dacActive = false;
-        this._dacIdleCycles = 0;
 
         this._cycleAccum = 0;
         this._cyclesPerSample = 894886 / 44100;
+        this._totalCycles = 0;
+        this._lastDACWrite = 0;
 
         // Power-of-2 ring buffer for lock-free producer/consumer
         this._ringSize = 16384;
@@ -53,39 +53,28 @@ export class Sound {
     }
 
     setDAC(value) {
-        const newVal = (value >> 2) & 0x3F;
-        if (newVal !== this.dacValue) {
-            this.dacValue = newVal;
-            this._dacActive = true;
-            this._dacIdleCycles = 0;
-        }
+        this.dacValue = (value >> 2) & 0x3F;
+        this._lastDACWrite = this._totalCycles;
     }
 
     setSoundEnable(enabled) {
         this.soundEnabled = enabled;
-        if (!enabled) {
-            this._dacActive = false;
-            this._dacIdleCycles = 0;
-        }
     }
 
     addCycles(cycles) {
-        if (!this.enabled || !this._dacActive) return;
+        if (!this.enabled || !this.soundEnabled) return;
 
-        // If DAC hasn't changed for a while, stop generating samples
-        this._dacIdleCycles += cycles;
-        if (this._dacIdleCycles > 2000) { // ~2ms of no DAC changes = silence
-            this._dacActive = false;
-            this._cycleAccum = 0;
+        this._totalCycles += cycles;
+
+        // Auto-silence: if DAC hasn't been written for ~5ms, stop
+        if (this._totalCycles - this._lastDACWrite > 4500) {
             return;
         }
 
         this._cycleAccum += cycles;
         if (this._cycleAccum < this._cyclesPerSample) return;
 
-        const sample = this.soundEnabled
-            ? ((this.dacValue / 31.5) - 1.0) * 0.3
-            : 0;
+        const sample = ((this.dacValue / 31.5) - 1.0) * 0.3;
 
         while (this._cycleAccum >= this._cyclesPerSample) {
             this._cycleAccum -= this._cyclesPerSample;
