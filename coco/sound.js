@@ -11,7 +11,7 @@ export class Sound {
         this._cycleAccum = 0;
         this._cyclesPerSample = 894886 / 44100;
         this._totalCycles = 0;
-        this._lastDACWrite = 0;
+        this._lastDACChange = 0;
 
         // Power-of-2 ring buffer for lock-free producer/consumer
         this._ringSize = 16384;
@@ -53,8 +53,12 @@ export class Sound {
     }
 
     setDAC(value) {
-        this.dacValue = (value >> 2) & 0x3F;
-        this._lastDACWrite = this._totalCycles;
+        const newVal = (value >> 2) & 0x3F;
+        // Only track as "active sound" if the value is changing (oscillating)
+        if (this.soundEnabled && newVal !== this.dacValue) {
+            this._lastDACChange = this._totalCycles;
+        }
+        this.dacValue = newVal;
     }
 
     setSoundEnable(enabled) {
@@ -66,8 +70,8 @@ export class Sound {
 
         this._totalCycles += cycles;
 
-        // Auto-silence: if DAC hasn't been written for ~5ms, stop
-        if (this._totalCycles - this._lastDACWrite > 4500) {
+        // Auto-silence: if DAC hasn't changed for ~5ms, stop producing samples
+        if (this._totalCycles - this._lastDACChange > 4500) {
             return;
         }
 
