@@ -125,30 +125,6 @@ export function buildHeader(name, fileType, asciiFlag, startAddr, loadAddr) {
     return data;
 }
 
-// Convert a cartridge ROM to CAS format (machine language tape file)
-// The ROM loads at $C000, entry point is $C000
-export function cartridgeToCAS(romData, name = 'CART') {
-    const data = new Uint8Array(romData);
-    const loadAddr = 0xC000;
-    const execAddr = 0xC000;
-
-    // Build header block (type 2 = machine language)
-    const header = buildHeader(name, 0x02, 0x00, execAddr, loadAddr);
-
-    // Split ROM data into 255-byte data blocks
-    const blocks = [];
-    blocks.push({ type: 0x00, data: header });
-
-    for (let offset = 0; offset < data.length; offset += 255) {
-        const chunkSize = Math.min(255, data.length - offset);
-        const chunk = data.slice(offset, offset + chunkSize);
-        blocks.push({ type: 0x01, data: chunk });
-    }
-
-    blocks.push({ type: 0xFF, data: new Uint8Array(0) }); // EOF
-    return buildCAS(blocks);
-}
-
 // =====================================================================
 // WAV encoding — generate real audio playable on a CoCo
 // =====================================================================

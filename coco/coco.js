@@ -10,7 +10,7 @@ import { Keyboard } from './keyboard.js';
 import { Joystick } from './joystick.js';
 import { Sound } from './sound.js';
 import { Debugger } from './debug.js';
-import { Cassette, casToWAV, buildCAS } from './cassette.js';
+import { Cassette, casToWAV } from './cassette.js';
 
 const CYCLES_PER_FRAME = 14914; // ~894,886 Hz / 60 fps
 
@@ -130,14 +130,12 @@ export class CoCo {
         }
     }
 
-    loadCartridge(data, name) {
+    loadCartridge(data) {
         this.mem.loadCartridge(data);
-        this.cartridgeName = name || 'CART';
     }
 
     removeCartridge() {
         this.mem.removeCartridge();
-        this.cartridgeName = null;
     }
 
     // Type text into the machine character by character
@@ -759,7 +757,7 @@ document.getElementById('cartFile')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const data = new Uint8Array(await file.arrayBuffer());
-    coco.loadCartridge(data, file.name.replace(/\.[^.]+$/, ''));
+    coco.loadCartridge(data);
     coco.stop();
     coco.reset();
     coco.start();
