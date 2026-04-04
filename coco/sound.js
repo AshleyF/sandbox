@@ -19,7 +19,7 @@ export class Sound {
         this._osc = null;
         this._gain = null;
         this._currentFreq = 0;
-        this._silentCycles = 0;
+        this._lastSoundCycle = 0;
     }
 
     init() {
@@ -52,13 +52,15 @@ export class Sound {
             const now = this._totalCycles;
             if (this._lastEdgeCycle > 0) {
                 const halfPeriod = now - this._lastEdgeCycle;
-                if (halfPeriod > 50 && halfPeriod < 5000) {
+                // Sound half-periods are typically 100-3000 cycles
+                // Joystick sweeps are much faster (< 50 cycles between crossings)
+                if (halfPeriod > 100 && halfPeriod < 5000) {
                     this._halfPeriods.push(halfPeriod);
                     if (this._halfPeriods.length > 8) this._halfPeriods.shift();
+                    this._lastSoundCycle = now;
                 }
             }
             this._lastEdgeCycle = now;
-            this._silentCycles = 0;
         }
     }
 
@@ -70,11 +72,10 @@ export class Sound {
     addCycles(cycles) {
         if (!this.enabled) return;
         this._totalCycles += cycles;
-        this._silentCycles += cycles;
 
-        // If no edges for ~10ms, stop the tone
-        if (this._silentCycles > 9000) {
-            this._stopTone();
+        // If no valid sound edges for ~10ms, stop the tone
+        if (this._totalCycles - this._lastSoundCycle > 9000) {
+            if (this._currentFreq > 0) this._stopTone();
             this._halfPeriods = [];
             return;
         }
@@ -82,7 +83,7 @@ export class Sound {
         // Update frequency from recent half-periods
         if (this._halfPeriods.length >= 4) {
             const avg = this._halfPeriods.reduce((a, b) => a + b, 0) / this._halfPeriods.length;
-            const freq = 894886 / (avg * 2); // CPU clock / full period
+            const freq = 894886 / (avg * 2);
             if (Math.abs(freq - this._currentFreq) > 5) {
                 this._playTone(freq);
             }
