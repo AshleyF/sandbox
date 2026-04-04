@@ -130,12 +130,14 @@ export class CoCo {
         }
     }
 
-    loadCartridge(data) {
+    loadCartridge(data, name) {
         this.mem.loadCartridge(data);
+        this.cartridgeName = name || 'CART';
     }
 
     removeCartridge() {
         this.mem.removeCartridge();
+        this.cartridgeName = null;
     }
 
     // Type text into the machine character by character
@@ -757,7 +759,7 @@ document.getElementById('cartFile')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const data = new Uint8Array(await file.arrayBuffer());
-    coco.loadCartridge(data);
+    coco.loadCartridge(data, file.name.replace(/\.[^.]+$/, ''));
     coco.stop();
     coco.reset();
     coco.start();
@@ -776,17 +778,21 @@ document.getElementById('ejectCart')?.addEventListener('click', () => {
 
 document.getElementById('cartToCas')?.addEventListener('click', () => {
     if (!coco.mem.cartrom) { status.textContent = 'No cartridge loaded.'; return; }
-    const cas = cartridgeToCAS(coco.mem.cartrom);
-    downloadBlob(new Blob([cas]), 'cartridge.cas');
-    status.textContent = 'Saved cartridge as CAS (' + cas.length + ' bytes). CLOADM then EXEC on target machine.';
+    const name = coco.cartridgeName || 'CART';
+    const casName = name.slice(0, 8).toUpperCase();
+    const cas = cartridgeToCAS(coco.mem.cartrom, casName);
+    downloadBlob(new Blob([cas]), name + '.cas');
+    status.textContent = 'Saved "' + casName + '" as CAS. CLOADM then EXEC on target machine.';
 });
 
 document.getElementById('cartToWav')?.addEventListener('click', () => {
     if (!coco.mem.cartrom) { status.textContent = 'No cartridge loaded.'; return; }
-    const cas = cartridgeToCAS(coco.mem.cartrom);
+    const name = coco.cartridgeName || 'CART';
+    const casName = name.slice(0, 8).toUpperCase();
+    const cas = cartridgeToCAS(coco.mem.cartrom, casName);
     const wav = casToWAV(cas);
-    downloadBlob(new Blob([wav], { type: 'audio/wav' }), 'cartridge.wav');
-    status.textContent = 'Saved cartridge as WAV. Play into a real CoCo, then CLOADM and EXEC.';
+    downloadBlob(new Blob([wav], { type: 'audio/wav' }), name + '.wav');
+    status.textContent = 'Saved "' + casName + '" as WAV. Play into a real CoCo, then CLOADM and EXEC.';
 });
 
 // === Sound UI ===
