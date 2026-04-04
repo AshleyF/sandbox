@@ -225,13 +225,7 @@ export class CoCo {
             this.ctx.putImageData(img, 0, 0);
         }
 
-        // Signal VSYNC via PIA0 CB1 (falling edge — CoCo FS1 is on CB1)
-        this.pia0.setCB1(false);
-        if (this.pia0.irqActive) {
-            this.cpu.irqLine = true;
-        }
-
-        // Flush sound samples to Web Audio
+        // Flush sound
         this.sound.flush();
     }
 
@@ -240,8 +234,16 @@ export class CoCo {
         this._advanceTyping();
         let executed = 0;
 
-        // Check interrupts once at start of frame
+        // Set VSYNC flag at START of frame — BASIC polls this flag during
+        // tight loops like SOUND command. If we only set it after the loop,
+        // routines that run with interrupts disabled never see it.
+        this.pia0.setCB1(false);
+        if (this.pia0.irqActive) {
+            this.cpu.irqLine = true;
+        }
         this.cpu.checkInterrupts();
+        this.cpu.irqLine = false;
+        this.pia0.setCB1(true); // reset for next frame
 
         while (executed < CYCLES_PER_FRAME) {
             // Keep CART signal active until cartridge code starts running
@@ -431,8 +433,6 @@ export class CoCo {
             this.sound.addCycles(c);
         }
         this.renderFrame();
-        this.cpu.irqLine = false;
-        this.pia0.setCB1(true);
     }
 
     start() {
