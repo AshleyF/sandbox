@@ -1,5 +1,6 @@
 // sound.js — CoCo sound emulation
-// 6-bit DAC on PIA1 port A bits 2-7. PIA1 CB2 enables speaker.
+// Detects DAC oscillation frequency and plays a matching tone.
+// Much simpler than sample-accurate emulation and avoids buffer issues.
 
 export class Sound {
     constructor() {
@@ -8,86 +9,107 @@ export class Sound {
         this.dacValue = 0;
         this.soundEnabled = false;
 
-        this._cycleAccum = 0;
-        this._cyclesPerSample = 894886 / 44100;
+        // Edge detection for frequency measurement
+        this._lastValue = 32; // midpoint
+        this._lastEdgeCycle = 0;
         this._totalCycles = 0;
-        this._lastDACChange = 0;
+        this._halfPeriods = [];
 
-        // Power-of-2 ring buffer for lock-free producer/consumer
-        this._ringSize = 16384;
-        this._ring = new Float32Array(this._ringSize);
-        this._writePos = 0;
-        this._readPos = 0;
+        // Active oscillator
+        this._osc = null;
+        this._gain = null;
+        this._currentFreq = 0;
+        this._silentCycles = 0;
     }
 
     init() {
         if (this.audioCtx) return;
         try {
-            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 44100
-            });
-            this._startPlayback();
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            this._gain = this.audioCtx.createGain();
+            this._gain.gain.value = 0;
+            this._gain.connect(this.audioCtx.destination);
             this.enabled = true;
         } catch (e) {
             console.warn('Web Audio not available:', e);
         }
     }
 
-    _startPlayback() {
-        const ctx = this.audioCtx;
-        const self = this;
-        const node = ctx.createScriptProcessor(2048, 0, 1);
-        node.onaudioprocess = (e) => {
-            const output = e.outputBuffer.getChannelData(0);
-            for (let i = 0; i < output.length; i++) {
-                if (self._readPos !== self._writePos) {
-                    output[i] = self._ring[self._readPos];
-                    self._readPos = (self._readPos + 1) & (self._ringSize - 1);
-                } else {
-                    output[i] = 0;
-                }
-            }
-        };
-        node.connect(ctx.destination);
-        this._node = node;
-    }
-
     setDAC(value) {
         const newVal = (value >> 2) & 0x3F;
-        // Only track as "active sound" if the value is changing (oscillating)
-        if (this.soundEnabled && newVal !== this.dacValue) {
-            this._lastDACChange = this._totalCycles;
-        }
+        if (newVal === this.dacValue) return;
+
+        const oldVal = this.dacValue;
         this.dacValue = newVal;
+
+        if (!this.soundEnabled) return;
+
+        // Detect zero-crossing (midpoint = 32)
+        const crossUp = oldVal < 32 && newVal >= 32;
+        const crossDown = oldVal >= 32 && newVal < 32;
+
+        if (crossUp || crossDown) {
+            const now = this._totalCycles;
+            if (this._lastEdgeCycle > 0) {
+                const halfPeriod = now - this._lastEdgeCycle;
+                if (halfPeriod > 50 && halfPeriod < 5000) {
+                    this._halfPeriods.push(halfPeriod);
+                    if (this._halfPeriods.length > 8) this._halfPeriods.shift();
+                }
+            }
+            this._lastEdgeCycle = now;
+            this._silentCycles = 0;
+        }
     }
 
     setSoundEnable(enabled) {
         this.soundEnabled = enabled;
+        if (!enabled) this._stopTone();
     }
 
     addCycles(cycles) {
-        if (!this.enabled || !this.soundEnabled) return;
-
+        if (!this.enabled) return;
         this._totalCycles += cycles;
+        this._silentCycles += cycles;
 
-        // Auto-silence: if DAC hasn't changed for ~5ms, stop producing samples
-        if (this._totalCycles - this._lastDACChange > 4500) {
+        // If no edges for ~10ms, stop the tone
+        if (this._silentCycles > 9000) {
+            this._stopTone();
+            this._halfPeriods = [];
             return;
         }
 
-        this._cycleAccum += cycles;
-        if (this._cycleAccum < this._cyclesPerSample) return;
-
-        const sample = ((this.dacValue / 31.5) - 1.0) * 0.3;
-
-        while (this._cycleAccum >= this._cyclesPerSample) {
-            this._cycleAccum -= this._cyclesPerSample;
-            const nextWrite = (this._writePos + 1) & (this._ringSize - 1);
-            if (nextWrite !== this._readPos) {
-                this._ring[this._writePos] = sample;
-                this._writePos = nextWrite;
+        // Update frequency from recent half-periods
+        if (this._halfPeriods.length >= 4) {
+            const avg = this._halfPeriods.reduce((a, b) => a + b, 0) / this._halfPeriods.length;
+            const freq = 894886 / (avg * 2); // CPU clock / full period
+            if (Math.abs(freq - this._currentFreq) > 5) {
+                this._playTone(freq);
             }
         }
+    }
+
+    _playTone(freq) {
+        if (!this.audioCtx || !this._gain) return;
+        if (freq < 20 || freq > 15000) return;
+
+        if (!this._osc) {
+            this._osc = this.audioCtx.createOscillator();
+            this._osc.type = 'square';
+            this._osc.connect(this._gain);
+            this._osc.start();
+        }
+
+        this._osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+        this._gain.gain.setValueAtTime(0.15, this.audioCtx.currentTime);
+        this._currentFreq = freq;
+    }
+
+    _stopTone() {
+        if (this._gain) {
+            this._gain.gain.setValueAtTime(0, this.audioCtx?.currentTime || 0);
+        }
+        this._currentFreq = 0;
     }
 
     flush() {}
