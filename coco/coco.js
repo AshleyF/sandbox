@@ -141,6 +141,8 @@ export class CoCo {
     // Type text into the machine character by character
     // Each char is held for a few frames, then released, simulating real typing
     startTyping(text) {
+        // Clear any held keys first
+        this.keyboard.clearAll();
         this._typeQueue = [];
         for (const ch of text) {
             if (ch === '\n' || ch === '\r') {
@@ -151,16 +153,16 @@ export class CoCo {
         }
         this._typeFrameCount = 0;
         this._typeHoldFrames = 4;
-        this._typeGapFrames = 2;
-        this._typePhase = 'idle'; // 'hold' | 'gap' | 'idle'
+        this._typeGapFrames = 3;
+        this._typePhase = 'delay'; // start with a delay to let keyboard settle
         this._typeCurrentKey = null;
+        this._typeDelayFrames = 15; // wait 15 frames (~250ms) before starting
     }
 
     // Call each frame to advance the typing simulation
     _advanceTyping() {
         if (!this._typeQueue || this._typeQueue.length === 0) {
             if (this._typePhase === 'hold') {
-                // Release current key
                 this.keyboard.keyUp({ key: this._typeCurrentKey });
                 this._typePhase = 'idle';
                 this._typeCurrentKey = null;
@@ -169,6 +171,13 @@ export class CoCo {
         }
 
         this._typeFrameCount++;
+
+        // Initial delay before typing starts
+        if (this._typePhase === 'delay') {
+            if (this._typeFrameCount < this._typeDelayFrames) return;
+            this._typePhase = 'idle';
+            this._typeFrameCount = 0;
+        }
 
         if (this._typePhase === 'idle' || this._typePhase === 'gap') {
             if (this._typePhase === 'gap' && this._typeFrameCount < this._typeGapFrames) return;
