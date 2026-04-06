@@ -499,12 +499,14 @@ const canvas = document.getElementById('screen');
 if (canvas) coco.setCanvas(canvas);
 
 // Keyboard and joystick events
-// IJKL+Tab = joystick (consumed, not sent to CoCo keyboard)
-// All other keys go to CoCo keyboard (including arrow keys)
+// Ctrl+Arrow/Space = joystick (consumed, not sent to CoCo keyboard)
+// All other keys go to CoCo keyboard
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'v') return; // let Ctrl-V through for paste
     if (coco.joystick.keyDown(e)) { e.preventDefault(); return; }
-    if (coco.keyboard.keyDown(e)) e.preventDefault();
+    if (!e.ctrlKey) { // don't send Ctrl combos to CoCo keyboard
+        if (coco.keyboard.keyDown(e)) e.preventDefault();
+    }
 });
 document.addEventListener('keyup', (e) => {
     if (coco.joystick.keyUp(e)) { e.preventDefault(); return; }

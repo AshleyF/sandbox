@@ -40,43 +40,27 @@ export class Joystick {
     }
 
     // Handle browser key events (returns true if consumed)
-    // Numpad or Shift+Arrow for joystick to avoid conflicting with CoCo keys
+    // Ctrl+Arrow = joystick directions, Ctrl+Space = fire
     keyDown(event) {
-        // Numpad keys (NumLock off)
-        switch (event.code) {
-            case 'Numpad8': this._keyState.up = true;    return true;
-            case 'Numpad2': this._keyState.down = true;  return true;
-            case 'Numpad4': this._keyState.left = true;  return true;
-            case 'Numpad6': this._keyState.right = true; return true;
-            case 'Numpad0':
-            case 'Numpad5': this.buttons[0] = true;      return true;
-        }
-        // Also support Shift+Arrow (Shift+Arrow won't type CoCo arrow keys since
-        // CoCo SHIFT+arrow produces different chars, and games don't use that)
-        if (event.shiftKey) {
-            switch (event.key) {
-                case 'ArrowUp':    this._keyState.up = true;    return true;
-                case 'ArrowDown':  this._keyState.down = true;  return true;
-                case 'ArrowLeft':  this._keyState.left = true;  return true;
-                case 'ArrowRight': this._keyState.right = true; return true;
-            }
+        if (!event.ctrlKey) return false;
+        switch (event.key) {
+            case 'ArrowUp':    this._keyState.up = true;    return true;
+            case 'ArrowDown':  this._keyState.down = true;  return true;
+            case 'ArrowLeft':  this._keyState.left = true;  return true;
+            case 'ArrowRight': this._keyState.right = true; return true;
+            case ' ':          this.buttons[0] = true;      return true;
         }
         return false;
     }
 
     keyUp(event) {
-        switch (event.code) {
-            case 'Numpad8': this._keyState.up = false;    return true;
-            case 'Numpad2': this._keyState.down = false;  return true;
-            case 'Numpad4': this._keyState.left = false;  return true;
-            case 'Numpad6': this._keyState.right = false; return true;
-            case 'Numpad0':
-            case 'Numpad5': this.buttons[0] = false;      return true;
+        switch (event.key) {
+            case 'ArrowUp':    this._keyState.up = false;    return true;
+            case 'ArrowDown':  this._keyState.down = false;  return true;
+            case 'ArrowLeft':  this._keyState.left = false;  return true;
+            case 'ArrowRight': this._keyState.right = false; return true;
+            case ' ':          this.buttons[0] = false;      return true;
         }
-        if (event.key === 'ArrowUp')    this._keyState.up = false;
-        if (event.key === 'ArrowDown')  this._keyState.down = false;
-        if (event.key === 'ArrowLeft')  this._keyState.left = false;
-        if (event.key === 'ArrowRight') this._keyState.right = false;
         return false;
     }
 
