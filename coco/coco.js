@@ -58,9 +58,12 @@ export class CoCo {
                     portA &= 0x7F;  // DAC < joystick: comparator low
                 }
 
-                // Joystick buttons (active low)
-                if (this.joystick.buttons[1]) portA &= ~0x01; // right button → bit 0
-                if (this.joystick.buttons[0]) portA &= ~0x02; // left button → bit 1
+                // Joystick buttons (active low) — bits shared with keyboard
+                // Only visible when keyboard columns are deselected
+                if (colSelect === 0xFF) {
+                    if (this.joystick.buttons[0]) portA &= ~0x01; // left button → bit 0
+                    if (this.joystick.buttons[1]) portA &= ~0x02; // right button → bit 1
+                }
 
                 this.pia0.inputA = portA;
             }
@@ -143,8 +146,10 @@ export class CoCo {
     startTyping(text) {
         this.keyboard.clearAll();
         this._typeQueue = [];
-        // Normalize newlines: \r\n → \n, \r → \n, then split
-        const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        // Normalize newlines: \r\n → \n, \r → \n
+        let normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        // Ensure trailing newline (pasted code always needs final Enter)
+        if (!normalized.endsWith('\n')) normalized += '\n';
         for (const ch of normalized) {
             if (ch === '\n') {
                 this._typeQueue.push('Enter');
@@ -494,15 +499,15 @@ const canvas = document.getElementById('screen');
 if (canvas) coco.setCanvas(canvas);
 
 // Keyboard and joystick events
-// Arrow keys go to BOTH joystick and keyboard, other keys to keyboard only
+// IJKL+Tab = joystick (consumed, not sent to CoCo keyboard)
+// All other keys go to CoCo keyboard (including arrow keys)
 document.addEventListener('keydown', (e) => {
-    // Let Ctrl-V through for paste
-    if (e.ctrlKey && e.key === 'v') return;
-    coco.joystick.keyDown(e);
+    if (e.ctrlKey && e.key === 'v') return; // let Ctrl-V through for paste
+    if (coco.joystick.keyDown(e)) { e.preventDefault(); return; }
     if (coco.keyboard.keyDown(e)) e.preventDefault();
 });
 document.addEventListener('keyup', (e) => {
-    coco.joystick.keyUp(e);
+    if (coco.joystick.keyUp(e)) { e.preventDefault(); return; }
     if (coco.keyboard.keyUp(e)) e.preventDefault();
 });
 // Ctrl-V paste: read clipboard and type it in

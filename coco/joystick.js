@@ -40,34 +40,26 @@ export class Joystick {
     }
 
     // Handle browser key events (returns true if consumed)
+    // IJKL = joystick directions, Space = fire button
     keyDown(event) {
-        switch (event.key) {
-            case 'ArrowLeft':  this._keyState.left = true;  return true;
-            case 'ArrowRight': this._keyState.right = true; return true;
-            case 'ArrowUp':    this._keyState.up = true;    return true;
-            case 'ArrowDown':  this._keyState.down = true;  return true;
-            case 'Alt':
-            case 'AltLeft':
-            case 'AltRight':   this.buttons[0] = true;      return true;
-            case 'Control':
-            case 'ControlLeft':
-            case 'ControlRight': this.buttons[1] = true;    return true;
+        switch (event.key.toLowerCase()) {
+            case 'i': this._keyState.up = true;    return true;
+            case 'k': this._keyState.down = true;  return true;
+            case 'j': this._keyState.left = true;  return true;
+            case 'l': this._keyState.right = true; return true;
+            case 'Tab':  this.buttons[0] = true;   event.preventDefault(); return true;
         }
         return false;
     }
 
     keyUp(event) {
-        switch (event.key) {
-            case 'ArrowLeft':  this._keyState.left = false;  return true;
-            case 'ArrowRight': this._keyState.right = false; return true;
-            case 'ArrowUp':    this._keyState.up = false;    return true;
-            case 'ArrowDown':  this._keyState.down = false;  return true;
-            case 'Alt':
-            case 'AltLeft':
-            case 'AltRight':   this.buttons[0] = false;      return true;
-            case 'Control':
-            case 'ControlLeft':
-            case 'ControlRight': this.buttons[1] = false;    return true;
+        switch (event.key.toLowerCase()) {
+            case 'i': this._keyState.up = false;    return true;
+            case 'k': this._keyState.down = false;  return true;
+            case 'j': this._keyState.left = false;  return true;
+            case 'l': this._keyState.right = false; return true;
+            case 'Tab':  this.buttons[0] = false;   return true;
+        }
         }
         return false;
     }
