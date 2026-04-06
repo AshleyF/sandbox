@@ -141,11 +141,12 @@ export class CoCo {
     // Type text into the machine character by character
     // Each char is held for a few frames, then released, simulating real typing
     startTyping(text) {
-        // Clear any held keys first
         this.keyboard.clearAll();
         this._typeQueue = [];
-        for (const ch of text) {
-            if (ch === '\n' || ch === '\r') {
+        // Normalize newlines: \r\n → \n, \r → \n, then split
+        const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        for (const ch of normalized) {
+            if (ch === '\n') {
                 this._typeQueue.push('Enter');
             } else {
                 this._typeQueue.push(ch);
@@ -154,9 +155,10 @@ export class CoCo {
         this._typeFrameCount = 0;
         this._typeHoldFrames = 4;
         this._typeGapFrames = 3;
-        this._typePhase = 'delay'; // start with a delay to let keyboard settle
+        this._typeEnterGapFrames = 20; // ~333ms pause after Enter
+        this._typePhase = 'delay';
         this._typeCurrentKey = null;
-        this._typeDelayFrames = 15; // wait 15 frames (~250ms) before starting
+        this._typeDelayFrames = 15;
     }
 
     // Call each frame to advance the typing simulation
@@ -180,7 +182,8 @@ export class CoCo {
         }
 
         if (this._typePhase === 'idle' || this._typePhase === 'gap') {
-            if (this._typePhase === 'gap' && this._typeFrameCount < this._typeGapFrames) return;
+            const neededGap = this._typeWasEnter ? this._typeEnterGapFrames : this._typeGapFrames;
+            if (this._typePhase === 'gap' && this._typeFrameCount < neededGap) return;
             // Start next character
             const key = this._typeQueue.shift();
             this._typeCurrentKey = key;
@@ -189,6 +192,7 @@ export class CoCo {
             this._typeFrameCount = 0;
         } else if (this._typePhase === 'hold') {
             if (this._typeFrameCount >= this._typeHoldFrames) {
+                this._typeWasEnter = (this._typeCurrentKey === 'Enter');
                 this.keyboard.keyUp({ key: this._typeCurrentKey });
                 this._typePhase = 'gap';
                 this._typeFrameCount = 0;
