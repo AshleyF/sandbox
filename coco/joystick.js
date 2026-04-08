@@ -15,6 +15,7 @@ export class Joystick {
         this._keyState = { left: false, right: false, up: false, down: false };
         this._accel = 0;          // acceleration (how fast to move)
         this._accelTimer = 0;     // frames since key held
+        this._ownedKeys = new Set(); // keys claimed by joystick keyDown
     }
 
     // Update from keyboard state — call each frame
@@ -44,24 +45,29 @@ export class Joystick {
     keyDown(event) {
         if (!event.ctrlKey) return false;
         switch (event.key) {
-            case 'ArrowUp':    this._keyState.up = true;    return true;
-            case 'ArrowDown':  this._keyState.down = true;  return true;
-            case 'ArrowLeft':  this._keyState.left = true;  return true;
-            case 'ArrowRight': this._keyState.right = true; return true;
-            case ' ':          this.buttons[0] = true;      return true;
+            case 'ArrowUp':    this._keyState.up = true;    break;
+            case 'ArrowDown':  this._keyState.down = true;  break;
+            case 'ArrowLeft':  this._keyState.left = true;  break;
+            case 'ArrowRight': this._keyState.right = true; break;
+            case ' ':          this.buttons[0] = true;       break;
+            default: return false;
         }
-        return false;
+        this._ownedKeys.add(event.key);
+        return true;
     }
 
     keyUp(event) {
+        if (!this._ownedKeys.has(event.key)) return false;
         switch (event.key) {
-            case 'ArrowUp':    this._keyState.up = false;    return true;
-            case 'ArrowDown':  this._keyState.down = false;  return true;
-            case 'ArrowLeft':  this._keyState.left = false;  return true;
-            case 'ArrowRight': this._keyState.right = false; return true;
-            case ' ':          this.buttons[0] = false;      return true;
+            case 'ArrowUp':    this._keyState.up = false;    break;
+            case 'ArrowDown':  this._keyState.down = false;  break;
+            case 'ArrowLeft':  this._keyState.left = false;  break;
+            case 'ArrowRight': this._keyState.right = false; break;
+            case ' ':          this.buttons[0] = false;       break;
+            default: return false;
         }
-        return false;
+        this._ownedKeys.delete(event.key);
+        return true;
     }
 
     // Compare joystick axis voltage with DAC value
