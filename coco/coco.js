@@ -10,7 +10,7 @@ import { Keyboard } from './keyboard.js';
 import { Joystick } from './joystick.js';
 import { Sound } from './sound.js';
 import { Debugger } from './debug.js';
-import { Cassette, casToWAV, buildCAS, buildHeader } from './cassette.js';
+import { Cassette, casToWAV } from './cassette.js';
 
 const CYCLES_PER_FRAME = 14914; // ~894,886 Hz / 60 fps
 
@@ -141,22 +141,6 @@ export class CoCo {
         this.mem.removeCartridge();
     }
 
-    // Convert current cartridge ROM to CAS machine language file
-    cartToTape(filename) {
-        if (!this.mem.cartrom) return null;
-        const rom = this.mem.cartrom;
-        const loadAddr = 0xC000;
-        const execAddr = 0xC000;
-        const name = (filename || 'CART').toUpperCase().slice(0, 8);
-        const header = buildHeader(name, 0x02, 0x00, execAddr, loadAddr);
-        const blocks = [{ type: 0x00, data: header }];
-        for (let i = 0; i < rom.length; i += 255) {
-            blocks.push({ type: 0x01, data: rom.slice(i, Math.min(i + 255, rom.length)) });
-        }
-        blocks.push({ type: 0xFF, data: new Uint8Array(0) });
-        return buildCAS(blocks);
-    }
-
     // Type text into the machine character by character
     // Each char is held for a few frames, then released, simulating real typing
     startTyping(text) {
@@ -229,8 +213,6 @@ export class CoCo {
         this.cpu.reset();
         this._cartStarted = false;
         this._cartBootFrames = undefined;
-        this._tapeExecActive = false;
-        this._tapeExecFrames = undefined;
         // Cartridge autostart: assert FIRQ and set PIA1 CB1 flag
         if (this.mem.cartrom) {
             this.pia1.irqB1 = true;
@@ -270,7 +252,6 @@ export class CoCo {
         this.joystick.update();
         this._advanceTyping();
         if (this._cartBootFrames !== undefined) this._cartBootFrames++;
-        if (this._tapeExecFrames !== undefined) this._tapeExecFrames++;
         let executed = 0;
 
         // Set VSYNC flag at START of frame — BASIC polls this flag during
@@ -298,14 +279,7 @@ export class CoCo {
             }
             const pc = this.cpu.pc;
 
-            // Detect tape-loaded ML execution entering cartridge address space
-            if (!this.mem.cartrom && !this._tapeExecActive &&
-                pc >= 0xC000 && pc < 0xFF00) {
-                this._tapeExecActive = true;
-                this._tapeExecFrames = 0;
-            }
-
-            // ROM intercept: CSRDON (cassette sync) at $A77C
+            // ROM intercept: CSRDON(cassette sync) at $A77C
             // Skip the FSK leader sync — just turn motor on and return
             if (this.cassette.interceptEnabled && pc === 0xA77C &&
                 this.cassette.playBuffer &&
@@ -451,12 +425,10 @@ export class CoCo {
                 continue;
             }
 
-            // Skip cassette delay loops — during cassette ops or boot of cart/tape ML
+            // Skip cassette delay loops — during cassette ops or first 5 sec of cart boot
             const cartBooting = this.mem.cartrom && !this._cartStarted ||
                 (this.mem.cartrom && this._cartBootFrames !== undefined && this._cartBootFrames < 300);
-            const tapeMLBooting = this._tapeExecActive &&
-                this._tapeExecFrames !== undefined && this._tapeExecFrames < 300;
-            if (this.cassette.motorOn || this.cassette.recording || cartBooting || tapeMLBooting) {
+            if (this.cassette.motorOn || this.cassette.recording || cartBooting) {
                 // $A7D8: WRLDR — write leader + data. Skip entirely.
                 if (pc === 0xA7D8) { cpu.pc = 0xA7E4; executed += 100; continue; }
                 // $A7CA: CASON — motor on + delay. Skip delay but charge real cycle cost.
@@ -825,35 +797,6 @@ document.getElementById('ejectCart')?.addEventListener('click', () => {
     coco.start();
     startTapeStatus();
     status.textContent = 'Cartridge ejected. Rebooted to BASIC.';
-});
-
-// Cart→CAS: save cartridge ROM as a CAS machine language tape file
-let _cartFileName = 'CART';
-document.getElementById('cartFile')?.addEventListener('change', (e) => {
-    if (e.target.files[0]) {
-        _cartFileName = e.target.files[0].name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 8);
-    }
-}, true); // capture phase — runs before the async handler above
-
-document.getElementById('cartToCAS')?.addEventListener('click', () => {
-    if (!coco.mem.cartrom) {
-        status.textContent = 'No cartridge loaded. Load a cartridge first.';
-        return;
-    }
-    const cas = coco.cartToTape(_cartFileName);
-    downloadBlob(new Blob([cas]), `${_cartFileName}.cas`);
-    status.textContent = `Saved Cart→CAS: ${_cartFileName}.cas (${cas.length} bytes). Use CLOADM then EXEC to load.`;
-});
-
-document.getElementById('cartToWAV')?.addEventListener('click', () => {
-    if (!coco.mem.cartrom) {
-        status.textContent = 'No cartridge loaded. Load a cartridge first.';
-        return;
-    }
-    const cas = coco.cartToTape(_cartFileName);
-    const wav = casToWAV(cas);
-    downloadBlob(new Blob([wav], { type: 'audio/wav' }), `${_cartFileName}.wav`);
-    status.textContent = `Saved Cart→WAV: ${_cartFileName}.wav (playable on a real CoCo!)`;
 });
 
 // === Sound UI ===
