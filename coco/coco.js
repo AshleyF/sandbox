@@ -610,10 +610,7 @@ function updateDebug() {
 // === Tape status display ===
 const tapeLabel = document.getElementById('tape-label');
 const tapeMotor = document.getElementById('tape-motor');
-const tapeSignal = document.getElementById('tape-signal');
-const tapeBar = document.getElementById('tape-bar');
 const tapePct = document.getElementById('tape-pct');
-const BAR_WIDTH = 40;
 
 let tapeStatusInterval = null;
 function startTapeStatus() {
@@ -628,40 +625,25 @@ function updateTapeStatus() {
     const c = coco.cassette;
     if (!c) return;
 
-    // Motor
     if (tapeMotor) {
         if (c.recording) {
-            tapeMotor.textContent = '⏺ RECORDING';
+            tapeMotor.textContent = '⏺REC';
             tapeMotor.style.color = '#f44';
         } else if (c.motorOn) {
-            tapeMotor.textContent = '▶ Motor ON';
+            tapeMotor.textContent = '▶ON';
             tapeMotor.style.color = '#0f0';
         } else {
-            tapeMotor.textContent = '⏹ Motor off';
+            tapeMotor.textContent = '⏹';
             tapeMotor.style.color = '#666';
         }
     }
 
-    // Signal
-    if (tapeSignal) {
+    if (tapePct) {
         if (c.recording) {
-            tapeSignal.textContent = 'Bytes: ' + c.recordBuffer.length;
-            tapeSignal.style.color = '#f44';
+            tapePct.textContent = c.recordBuffer.length + 'B';
         } else {
-            tapeSignal.textContent = 'Signal: ' + (c.signalHigh ? '▀' : '▄');
-            tapeSignal.style.color = c.motorOn ? '#0f0' : '#555';
+            tapePct.textContent = Math.round(c.progress * 100) + '%';
         }
-    }
-
-    // Progress bar
-    if (c.recording) {
-        if (tapeBar) tapeBar.textContent = '⏺'.repeat(Math.min(BAR_WIDTH, Math.floor(c.recordBuffer.length / 10)));
-        if (tapePct) tapePct.textContent = c.recordBuffer.length + ' bytes';
-    } else {
-        const progress = c.progress;
-        const filled = Math.round(progress * BAR_WIDTH);
-        if (tapeBar) tapeBar.textContent = '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
-        if (tapePct) tapePct.textContent = Math.round(progress * 100) + '%';
     }
 }
 
@@ -682,11 +664,11 @@ function drawStick(ctx, x, y, btnPressed, w, h) {
     ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h);
     ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
     ctx.stroke();
-    const px = (x / 63) * (w - 8) + 4;
-    const py = (y / 63) * (h - 8) + 4;
+    const px = (x / 63) * (w - 6) + 3;
+    const py = (y / 63) * (h - 6) + 3;
     ctx.fillStyle = btnPressed ? '#f44' : '#0f0';
     ctx.beginPath();
-    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
     ctx.fill();
     if (btnPressed) {
         ctx.strokeStyle = '#f44';
@@ -698,10 +680,10 @@ function drawStick(ctx, x, y, btnPressed, w, h) {
 
 function updateJoystickDisplay() {
     const j = coco.joystick;
-    drawStick(joyRightCtx, j.axes[0], j.axes[1], j.buttons[0], 60, 60);
-    drawStick(joyLeftCtx, j.axes[2], j.axes[3], j.buttons[1], 60, 60);
-    if (joyRightPos) joyRightPos.textContent = `R: ${j.axes[0]},${j.axes[1]}${j.buttons[0] ? ' [F]' : ''}`;
-    if (joyLeftPos) joyLeftPos.textContent = `L: ${j.axes[2]},${j.axes[3]}${j.buttons[1] ? ' [F]' : ''}`;
+    drawStick(joyRightCtx, j.axes[0], j.axes[1], j.buttons[0], 40, 40);
+    drawStick(joyLeftCtx, j.axes[2], j.axes[3], j.buttons[1], 40, 40);
+    if (joyRightPos) joyRightPos.textContent = `R:${j.axes[0]},${j.axes[1]}${j.buttons[0] ? '!' : ''}`;
+    if (joyLeftPos) joyLeftPos.textContent = `L:${j.axes[2]},${j.axes[3]}${j.buttons[1] ? '!' : ''}`;
 }
 
 // === Cassette UI ===
@@ -717,7 +699,7 @@ document.getElementById('tapeFile')?.addEventListener('change', async (e) => {
 
     coco.cassette.loadCAS(data);
     status.textContent = `Tape loaded: ${file.name}`;
-    if (tapeLabel) tapeLabel.textContent = `🎵 Tape: ${file.name}`;
+    if (tapeLabel) tapeLabel.textContent = `🎵 ${file.name}`;
     updateTapeStatus();
 });
 
@@ -729,7 +711,7 @@ document.getElementById('recordTape')?.addEventListener('click', () => {
     } else {
         // Start recording
         coco.cassette.startRecording();
-        if (tapeLabel) tapeLabel.textContent = '🎵 Tape: ⏺ Recording armed';
+        if (tapeLabel) tapeLabel.textContent = '🎵 ⏺ Recording armed';
         status.textContent = 'Recording armed. Type CSAVE"NAME" in BASIC.';
     }
     updateTapeStatus();
@@ -847,4 +829,57 @@ document.getElementById('pasteCode')?.addEventListener('click', () => {
 
     coco.startTyping(upper);
     status.textContent = 'Typing ' + lines + ' line(s)... click Paste Code again to cancel.';
+});
+
+// === On-screen keyboard ===
+document.getElementById('kbToggle')?.addEventListener('click', () => {
+    document.getElementById('keyboard-wrap')?.classList.toggle('visible');
+});
+
+let _shiftSticky = false;
+const _shiftKeyEl = document.getElementById('shiftKey');
+
+document.querySelectorAll('#keyboard-wrap .kb-key').forEach(el => {
+    const key = el.dataset.key;
+    if (!key) return;
+
+    const press = (e) => {
+        e.preventDefault();
+        if (key === 'SHIFT') {
+            _shiftSticky = !_shiftSticky;
+            el.classList.toggle('active', _shiftSticky);
+            if (_shiftSticky) {
+                coco.keyboard.keyDown({ key: 'Shift' });
+            } else {
+                coco.keyboard.keyUp({ key: 'Shift' });
+            }
+            return;
+        }
+        el.classList.add('active');
+        coco.keyboard.keyDown({ key });
+    };
+
+    const release = (e) => {
+        e.preventDefault();
+        if (key === 'SHIFT') return;
+        el.classList.remove('active');
+        coco.keyboard.keyUp({ key });
+        if (_shiftSticky) {
+            _shiftSticky = false;
+            if (_shiftKeyEl) _shiftKeyEl.classList.remove('active');
+            coco.keyboard.keyUp({ key: 'Shift' });
+        }
+    };
+
+    el.addEventListener('touchstart', press, { passive: false });
+    el.addEventListener('touchend', release, { passive: false });
+    el.addEventListener('touchcancel', release, { passive: false });
+    el.addEventListener('mousedown', press);
+    el.addEventListener('mouseup', release);
+    el.addEventListener('mouseleave', () => {
+        if (el.classList.contains('active') && key !== 'SHIFT') {
+            el.classList.remove('active');
+            coco.keyboard.keyUp({ key });
+        }
+    });
 });
