@@ -49,9 +49,17 @@
             </div>
         </div>
         <div id="joystick-status" style="font-size:0.85em;color:#888;text-align:center;">
-            <div>🕹 Joystick (Ctrl+Arrows, Ctrl+Space=fire)</div>
-            <canvas id="joystick-display" width="80" height="80" style="border:1px solid #444;margin-top:0.3em;background:#111;"></canvas>
-            <div id="joystick-pos" style="color:#666;font-size:0.75em;">X:31 Y:31</div>
+            <div>🕹 Right: Ctrl+Arrows+Space &nbsp; Left: +Shift</div>
+            <div style="display:flex;gap:0.5em;justify-content:center;margin-top:0.3em;">
+                <div>
+                    <canvas id="joy-right" width="60" height="60" style="border:1px solid #444;background:#111;"></canvas>
+                    <div id="joy-right-pos" style="color:#666;font-size:0.7em;">R: 31,31</div>
+                </div>
+                <div>
+                    <canvas id="joy-left" width="60" height="60" style="border:1px solid #444;background:#111;"></canvas>
+                    <div id="joy-left-pos" style="color:#666;font-size:0.7em;">L: 31,31</div>
+                </div>
+            </div>
         </div>
     </div>
     <pre id="debug" style="text-align:left;display:inline-block;font-size:11px;color:#0a0;margin-top:1em;"></pre>

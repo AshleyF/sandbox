@@ -50,7 +50,7 @@ export class CoCo {
                 const dacValue = (this.pia1.dataA >> 2) & 0x3F;
                 const selLeft = !!(this.pia0.ctrlA & 0x08);  // CA2: 0=right, 1=left
                 const selY = !!(this.pia0.ctrlB & 0x08);     // CB2: 0=X, 1=Y
-                const axis = (selLeft ? 0 : 2) + (selY ? 1 : 0);
+                const axis = (selLeft ? 2 : 0) + (selY ? 1 : 0);
                 const cmpResult = this.joystick.compare(axis, dacValue);
                 if (cmpResult) {
                     portA |= 0x80;  // DAC >= joystick: comparator high
@@ -58,11 +58,11 @@ export class CoCo {
                     portA &= 0x7F;  // DAC < joystick: comparator low
                 }
 
-                // Joystick buttons (active low) — bits shared with keyboard
+                // Joystick buttons (active low)
                 // Only visible when keyboard columns are deselected
                 if (colSelect === 0xFF) {
-                    if (this.joystick.buttons[0]) portA &= ~0x01; // left button → bit 0
-                    if (this.joystick.buttons[1]) portA &= ~0x02; // right button → bit 1
+                    if (this.joystick.buttons[0]) portA &= ~0x01; // right button → PA0
+                    if (this.joystick.buttons[1]) portA &= ~0x02; // left button → PA1
                 }
 
                 this.pia0.inputA = portA;
@@ -524,8 +524,7 @@ document.addEventListener('paste', (e) => {
 // Clear all keys when window loses focus (prevents stuck keys)
 window.addEventListener('blur', () => {
     coco.keyboard.clearAll();
-    coco.joystick._keyState = { left: false, right: false, up: false, down: false };
-    coco.joystick.buttons = [false, false];
+    coco.joystick.clearAll();
 });
 
 // Auto-load ROMs from roms/ directory on startup
@@ -666,42 +665,42 @@ function updateTapeStatus() {
 }
 
 // === Joystick display ===
-const joyCanvas = document.getElementById('joystick-display');
-const joyCtx = joyCanvas?.getContext('2d');
-const joyPos = document.getElementById('joystick-pos');
+const joyRightCanvas = document.getElementById('joy-right');
+const joyLeftCanvas = document.getElementById('joy-left');
+const joyRightCtx = joyRightCanvas?.getContext('2d');
+const joyLeftCtx = joyLeftCanvas?.getContext('2d');
+const joyRightPos = document.getElementById('joy-right-pos');
+const joyLeftPos = document.getElementById('joy-left-pos');
+
+function drawStick(ctx, x, y, btnPressed, w, h) {
+    if (!ctx) return;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#333';
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h);
+    ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
+    ctx.stroke();
+    const px = (x / 63) * (w - 8) + 4;
+    const py = (y / 63) * (h - 8) + 4;
+    ctx.fillStyle = btnPressed ? '#f44' : '#0f0';
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.fill();
+    if (btnPressed) {
+        ctx.strokeStyle = '#f44';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(1, 1, w - 2, h - 2);
+        ctx.lineWidth = 1;
+    }
+}
 
 function updateJoystickDisplay() {
-    if (!joyCtx) return;
     const j = coco.joystick;
-    const w = 80, h = 80;
-
-    joyCtx.fillStyle = '#111';
-    joyCtx.fillRect(0, 0, w, h);
-
-    // Crosshair
-    joyCtx.strokeStyle = '#333';
-    joyCtx.beginPath();
-    joyCtx.moveTo(w/2, 0); joyCtx.lineTo(w/2, h);
-    joyCtx.moveTo(0, h/2); joyCtx.lineTo(w, h/2);
-    joyCtx.stroke();
-
-    // Stick position
-    const px = (j.axes[0] / 63) * (w - 8) + 4;
-    const py = (j.axes[1] / 63) * (h - 8) + 4;
-    joyCtx.fillStyle = j.buttons[0] ? '#f44' : '#0f0';
-    joyCtx.beginPath();
-    joyCtx.arc(px, py, 5, 0, Math.PI * 2);
-    joyCtx.fill();
-
-    // Border glow when button pressed
-    if (j.buttons[0] || j.buttons[1]) {
-        joyCtx.strokeStyle = '#f44';
-        joyCtx.lineWidth = 2;
-        joyCtx.strokeRect(1, 1, w - 2, h - 2);
-        joyCtx.lineWidth = 1;
-    }
-
-    if (joyPos) joyPos.textContent = `X:${j.axes[0]} Y:${j.axes[1]}${j.buttons[0] ? ' [BTN]' : ''}`;
+    drawStick(joyRightCtx, j.axes[0], j.axes[1], j.buttons[0], 60, 60);
+    drawStick(joyLeftCtx, j.axes[2], j.axes[3], j.buttons[1], 60, 60);
+    if (joyRightPos) joyRightPos.textContent = `R: ${j.axes[0]},${j.axes[1]}${j.buttons[0] ? ' [F]' : ''}`;
+    if (joyLeftPos) joyLeftPos.textContent = `L: ${j.axes[2]},${j.axes[3]}${j.buttons[1] ? ' [F]' : ''}`;
 }
 
 // === Cassette UI ===
