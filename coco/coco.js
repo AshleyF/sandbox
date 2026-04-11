@@ -45,11 +45,12 @@ export class CoCo {
 
                 // Joystick comparator on bit 7
                 // DAC value from PIA1 port A bits 2-7
-                // Axis MUX: CA2 selects joystick (0=right, 1=left)
-                //            CB2 selects axis (0=X, 1=Y)
+                // Axis MUX (74LS153):
+                //   CA2 (SEL0): 0=X, 1=Y
+                //   CB2 (SEL1): 0=right, 1=left
                 const dacValue = (this.pia1.dataA >> 2) & 0x3F;
-                const selLeft = !!(this.pia0.ctrlA & 0x08);  // CA2: 0=right, 1=left
-                const selY = !!(this.pia0.ctrlB & 0x08);     // CB2: 0=X, 1=Y
+                const selY = !!(this.pia0.ctrlA & 0x08);     // CA2: 0=X, 1=Y
+                const selLeft = !!(this.pia0.ctrlB & 0x08);  // CB2: 0=right, 1=left
                 const axis = (selLeft ? 2 : 0) + (selY ? 1 : 0);
                 const cmpResult = this.joystick.compare(axis, dacValue);
                 if (cmpResult) {
