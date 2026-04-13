@@ -568,14 +568,11 @@ document.getElementById('romFile')?.addEventListener('change', async (e) => {
 });
 
 document.getElementById('reset')?.addEventListener('click', () => {
+    coco.stop();
     coco.reset();
-    status.textContent = `Reset. PC=${coco.cpu.pc.toString(16).toUpperCase().padStart(4, '0')}`;
-});
-
-document.getElementById('run')?.addEventListener('click', () => {
     coco.start();
     startTapeStatus();
-    status.textContent = 'Running...';
+    status.textContent = 'Reset.';
 });
 
 // === Tape status display ===
