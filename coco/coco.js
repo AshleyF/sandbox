@@ -9,7 +9,6 @@ import { VDG } from './vdg.js';
 import { Keyboard } from './keyboard.js';
 import { Joystick } from './joystick.js';
 import { Sound } from './sound.js';
-import { Debugger } from './debug.js';
 import { Cassette, casToWAV } from './cassette.js';
 
 const CYCLES_PER_FRAME = 14914; // ~894,886 Hz / 60 fps
@@ -110,7 +109,6 @@ export class CoCo {
             addr => this.mem.read(addr),
             (addr, val) => this.mem.write(addr, val)
         );
-        this.dbg = new Debugger(this.cpu, addr => this.mem.read(addr));
         this.running = false;
         this.frameId = null;
         this.canvas = null;
@@ -571,7 +569,6 @@ document.getElementById('romFile')?.addEventListener('change', async (e) => {
 
 document.getElementById('reset')?.addEventListener('click', () => {
     coco.reset();
-    updateDebug();
     status.textContent = `Reset. PC=${coco.cpu.pc.toString(16).toUpperCase().padStart(4, '0')}`;
 });
 
@@ -580,32 +577,6 @@ document.getElementById('run')?.addEventListener('click', () => {
     startTapeStatus();
     status.textContent = 'Running...';
 });
-
-document.getElementById('stop')?.addEventListener('click', () => {
-    coco.stop();
-    stopTapeStatus();
-    updateDebug();
-    updateTapeStatus();
-    status.textContent = `Stopped. ${coco.dbg.dumpRegisters().split('\n')[0]}`;
-});
-
-document.getElementById('step')?.addEventListener('click', () => {
-    coco.stop();
-    const entry = coco.dbg.stepDebug();
-    coco.renderFrame();
-    updateDebug();
-    status.textContent = `${entry.instruction} [${entry.cycles}c]`;
-});
-
-const debugEl = document.getElementById('debug');
-function updateDebug() {
-    if (!debugEl) return;
-    const regs = coco.dbg.dumpRegisters();
-    const dis = coco.dbg.disassemble(coco.cpu.pc, 8)
-        .map(d => `${d.addr.toString(16).toUpperCase().padStart(4, '0')} ${d.hex.padEnd(14)} ${d.text}`)
-        .join('\n');
-    debugEl.textContent = regs + '\n\n' + dis;
-}
 
 // === Tape status display ===
 const tapeLabel = document.getElementById('tape-label');
@@ -786,15 +757,14 @@ const soundBtn = document.getElementById('soundToggle');
 soundBtn?.addEventListener('click', () => {
     if (!coco.sound.enabled) {
         coco.sound.init();
-        soundBtn.textContent = '🔊 Sound';
-        status.textContent = 'Sound enabled. Try SOUND 100,5 or PLAY"CDEFGAB"';
+        soundBtn.textContent = '🔊';
     } else {
         if (coco.sound.audioCtx.state === 'running') {
             coco.sound.audioCtx.suspend();
-            soundBtn.textContent = '🔇 Sound';
+            soundBtn.textContent = '🔇';
         } else {
             coco.sound.audioCtx.resume();
-            soundBtn.textContent = '🔊 Sound';
+            soundBtn.textContent = '🔊';
         }
     }
 });
