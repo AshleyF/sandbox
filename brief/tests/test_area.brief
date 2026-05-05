@@ -1,0 +1,5 @@
+\ Area of a circle: pi * r^2, r=5 → 78.53975
+main area 5
+area * pi sq
+  sq * dup
+  pi 3.14159

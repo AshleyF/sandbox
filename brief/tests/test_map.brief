@@ -1,0 +1,4 @@
+\ Map: square each element
+main squares {1 2 3 4 5}
+squares map [sq]
+  sq * dup

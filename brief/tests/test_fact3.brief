@@ -1,0 +1,4 @@
+\ Factorial: [1 drop] in Brief prefix → postfix [drop 1]
+main fact 5
+fact if [* fact dec dup] [1 drop] = 0 dup
+  dec - 1

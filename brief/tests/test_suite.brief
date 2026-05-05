@@ -1,0 +1,90 @@
+\ ── Test suite for Brief interpreter ──────────────────────────
+\ Each test prints its name and result. Expected outputs in comments.
+
+\ ── Arithmetic ───────────────────────────────────────────────
+test-add + 3 4
+\ Expected: 7
+
+test-sub - 10 3
+\ Expected: 7
+
+test-mul * 6 7
+\ Expected: 42
+
+test-sq * dup 5
+\ Expected: 25 (but also leaves 5)
+
+\ ── Stack ops ────────────────────────────────────────────────
+test-dup dup 5
+\ Expected: 5 5
+
+test-swap swap 1 2
+\ Expected: 2 1 → top=1, second=2
+
+test-over over 1 2
+\ Expected: 1 2 1
+
+\ ── Comparisons ──────────────────────────────────────────────
+test-eq = 3 3
+\ Expected: -1 (true)
+
+test-lt < 3 5
+\ Expected: -1 (true, 3<5)
+
+test-gt > 5 3
+\ Expected: -1 (true, 5>3? depends on convention)
+
+\ ── Lists ────────────────────────────────────────────────────
+test-first first {10 20 30}
+\ Expected: 10
+
+test-rest rest {10 20 30}
+\ Expected: {20 30}
+
+test-nth nth {10 20 30} 1
+\ Expected: 20
+
+test-put put {10 20 30} 1 99
+\ Expected: {10 99 30}
+
+test-length length {1 2 3 4 5}
+\ Expected: 5
+
+test-range range 1 5
+\ Expected: {1 2 3 4 5}
+
+test-append append {1 2 3} 4
+\ Expected: {1 2 3 4}
+
+test-concat concat {1 2} {3 4}
+\ Expected: {1 2 3 4}
+
+\ ── Higher-order ─────────────────────────────────────────────
+test-map map [* dup] {1 2 3 4 5}
+\ Expected: {1 4 9 16 25}
+
+test-filter filter [= 0 mod 2] {1 2 3 4 5 6}
+\ Expected: {2 4 6}
+
+test-fold fold [+] 0 {1 2 3 4 5}
+\ Expected: 15
+
+test-each each [drop] {1 2 3}
+\ Expected: (nothing on stack — each drops each element)
+
+test-any-true any [= 3] {1 2 3 4}
+\ Expected: -1 (true)
+
+test-any-false any [= 9] {1 2 3 4}
+\ Expected: 0 (false)
+
+\ ── Combinators ──────────────────────────────────────────────
+test-apply apply [+ 1 2]
+\ Expected: 3
+
+test-dip dip [+ 1] 10 5
+\ Expected: 6 10 (dip stashes 10, adds 1 to 5, restores 10... wait)
+\ Actually: stack is (5 10), dip pops 10, pops [+ 1], runs [1 +] on (5) → 6, pushes 10 → (6 10)
+
+test-keep keep [* dup] 5
+\ Expected: 25 5 (apply sq to copy, keep original)

@@ -1,0 +1,36 @@
+{
+  "completed": [
+    {
+      "id": "5b10fdc6",
+      "title": "Task 1",
+      "list": "logbook",
+      "notes": "",
+      "tags": [],
+      "area": null,
+      "deadline": null,
+      "when_date": null,
+      "checklist": [],
+      "created": "2026-03-22T21:39:47Z",
+      "completed": "2026-03-22T21:40:31Z",
+      "parent": null
+    }
+  ],
+  "trashed": [
+    {
+      "id": "0e2862e1",
+      "title": "Answer mom about the Easter plans",
+      "list": "trash",
+      "notes": "",
+      "tags": [
+        "context:phone"
+      ],
+      "area": null,
+      "deadline": "2026-04-07",
+      "when_date": null,
+      "checklist": [],
+      "created": "2026-03-22T21:26:30Z",
+      "completed": null,
+      "parent": null
+    }
+  ]
+}

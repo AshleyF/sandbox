@@ -1,0 +1,217 @@
+\ ═══════════════════════════════════════════════
+\  Tic Tac Toe in Brief
+\ ═══════════════════════════════════════════════
+\
+\ Board: list of 9 ints. 0=empty, 1=X(human), 2=O(AI)
+\ Player: 1 or 2
+\ Position: 0-8
+\
+\ Calling convention in Brief prefix:
+\   f arg1 arg2 → R→L: push arg2, push arg1 → arg1 on top
+\   if [ELSE] [THEN] cond → first bracket = false/else branch
+\
+
+\ ── Constants ────────────────────────────────
+
+empty-board {0 0 0 0 0 0 0 0 0}
+
+winning-lines ..
+  {{0 1 2} {3 4 5} {6 7 8} ..
+   {0 3 6} {1 4 7} {2 5 8} ..
+   {0 4 8} {2 4 6}}
+
+\ ── Utilities ────────────────────────────────
+
+\ swap-player ( player -- other-player )
+swap-player if [1] [2] = 1
+
+\ empty-cells ( board -- {positions} )
+\ Returns list of indices where board[i] == 0.
+empty-cells drop swap filter [= 0 nth swap over] range 8 0
+
+\ ── Win Detection ────────────────────────────
+
+\ line-won? ( board player line -- bool )
+\ Checks if all 3 cells in line equal player in board.
+\ Stack: board at bottom, player middle, line on top.
+\ Uses pick to reach board (pick 3 initially) and player (pick 2).
+\ After dup 0 nth: (board player line idx0)
+\   pick 3 = board, pick 2 = player
+\ After adding bool0 and getting idx1:
+\   pick 4 = board, pick 3 = player
+\ After adding bool1 and getting idx2:
+\   pick 5 = board, pick 4 = player
+line-won? nip nip nip and and ..
+  = pick 4 nth swap pick 5 nth 2 pick 2 ..
+  = pick 3 nth swap pick 4 nth 1 over ..
+  = pick 2 nth swap pick 3 nth 0 dup
+
+\ won? ( player board -- bool )
+\ Entry: player on top, board below.
+\ In prefix: won? player board → postfix: board player won?
+\ Inside any loop, quotation copies (board player) for each line:
+\   dip [swap over over] on (board player line):
+\     stashes line, runs [over over swap] (reversed) on (board player):
+\       over→(board player board), over→(board player board player),
+\       swap→(board player player board)
+\     restores line → (board player player board line)
+\   line-won? on top 3: (board player line) → result
+\   nip nip nip removes copies, any pops result
+\ After any: (board player bool). nip nip removes player+board → (bool)
+won? nip nip any [line-won? dip [swap over over]] winning-lines
+
+\ draw? ( board -- bool )
+\ Board is full (no empty cells). Consumes board.
+draw? = 0 length empty-cells
+
+\ ── Game Status ──────────────────────────────
+
+\ check-status ( board -- board 'status )
+\ Returns board (preserved) and one of: 'x-wins 'o-wins 'draw 'playing
+\ Uses dup to copy board before each check (won? and draw? consume it).
+check-status ..
+  if [if [if ['playing] ['draw] draw? dup] ..
+         ['o-wins] won? swap 2 dup] ..
+     ['x-wins] won? swap 1 dup
+
+\ ── Validation & Placement ───────────────────
+
+\ valid? ( board pos -- board pos bool )
+\ Checks if board[pos] == 0. Preserves board and pos.
+\ over over: copies board and pos. nth: board[pos]. 0 =: bool.
+valid? = 0 nth over over
+
+\ place ( board pos player -- board' )
+\ put pops: value(player), index(pos), list(board) → board'
+place put
+
+\ ── AI (Negamax) ──────────────────────────────
+
+\ check-player-won ( board player depth -- board player depth bool )
+\ Checks if the current player has won. Non-destructive.
+check-player-won won? swap pick 2 pick 2
+
+\ check-opp-won ( board player depth -- board player depth bool )
+\ Checks if the opponent has won. Non-destructive.
+check-opp-won won? swap swap-player pick 2 pick 2
+
+\ check-draw ( board player depth -- board player depth bool )
+\ Checks if the board is a draw (no empty cells). Non-destructive.
+check-draw draw? pick 2
+
+\ win-score ( board player depth -- score )
+\ Returns 10-depth. Player won, so high score adjusted by depth.
+win-score - swap 10 nip nip
+
+\ loss-score ( board player depth -- score )
+\ Returns depth-10. Opponent won, so negative score adjusted by depth.
+loss-score - 10 nip nip
+
+\ draw-score ( board player depth -- 0 )
+\ Returns 0 for a draw position.
+draw-score 0 drop drop drop
+
+\ score-moves ( board player depth best-score moves -- score )
+\ Iterates over candidate moves, evaluating each via negamax.
+\ For each move: place it, call negamax for opponent at depth+1,
+\ negate the score (negamax convention), and keep the max.
+score-moves ..
+  if [score-moves rest swap max rot negate negamax ..
+        inc pick 4 swap-player pick 4 ..
+        nip put pick 6 pick 1 pick 5 first dup] ..
+     [nip nip nip drop] ..
+     empty? dup
+
+\ negamax ( board player depth -- score )
+\ Negamax algorithm for minimax search.
+\ Returns a score from the perspective of the given player.
+\ Positive = player winning, negative = losing, 0 = draw.
+negamax ..
+  if ..
+    [if ..
+      [if ..
+        [score-moves swap -100 empty-cells pick 2] ..
+        [draw-score] ..
+        check-draw] ..
+      [loss-score] ..
+      check-opp-won] ..
+    [win-score] ..
+    check-player-won
+
+\ pick-best ( best-pos best-score pos score -- best-pos' best-score' )
+\ Keeps the (pos, score) pair with the higher score.
+pick-best if [drop drop] [drop rot drop rot] > pick 3 dup
+
+\ best-move-loop ( board player best-pos best-score moves -- pos )
+\ Iterates empty cells, calling negamax for each, tracking the
+\ position with the highest score.
+best-move-loop ..
+  if [best-move-loop rest ..
+        dip [pick-best negate negamax 1 ..
+               swap-player pick 4 ..
+               put pick 5 pick 1 pick 4] ..
+        swap first dup] ..
+     [nip nip nip swap drop] ..
+     empty? dup
+
+\ best-move ( board player -- pos )
+\ Returns the optimal position for the given player.
+best-move best-move-loop dip [-100 -1] empty-cells over
+
+\ ai-move ( board -- board' )
+\ Places O (player 2) at the optimal position using negamax.
+ai-move put 2 best-move 2 dup
+
+\ ── Play ─────────────────────────────────────
+
+\ play ( board pos -- board' 'status )
+\ Human plays X at pos. If valid, places mark, checks status.
+\ If still playing, AI auto-responds with optimal move (negamax).
+\ Returns board' and status symbol: 'x-wins 'o-wins 'draw 'playing 'invalid
+play if ['invalid drop] ..
+  [if [] [check-status ai-move drop] ..
+   = 'playing dup check-status put 1] ..
+  valid?
+
+\ ── Display ──────────────────────────────────
+
+\ cell-char ( val -- string )
+\ Converts a cell value (0/1/2) to display character ("."/"X"/"O").
+cell-char if [if ["." drop] ["O" drop] = 2 dup] ["X" drop] = 1 dup
+
+\ board-chars ( board -- {strings} )
+\ Converts board to list of display characters.
+board-chars map [cell-char]
+
+\ show-board ( board -- string )
+\ Renders the board as a formatted grid string.
+\ Uses gc sub-def: gc ( {strings} partial n -- {strings} partial' )
+\ gc copies strings via pick 2, does nth, concats to partial.
+show-board nip ..
+  gc 8 concat " | " gc 7 concat " | " ..
+  gc 6 concat "\n---+---+---\n" ..
+  gc 5 concat " | " gc 4 concat " | " ..
+  gc 3 concat "\n---+---+---\n" ..
+  gc 2 concat " | " gc 1 concat " | " ..
+  nth 0 dup ..
+  map [cell-char]
+  gc concat nth swap pick 2
+
+\ ── Entry ────────────────────────────────────
+
+\ init ( -- board )
+init empty-board
+
+\ ── Interface (with display) ─────────────────
+
+\ print-board ( board -- board )
+\ Emits the board display via the agent system, preserving the board.
+print-board print show-board dup
+
+\ new-game ( -- board )
+\ Starts a new game and displays the empty board.
+new-game print-board init
+
+\ move ( board pos -- board' )
+\ Plays, displays the board, emits the status. Leaves only board on stack.
+move . dip [print-board] play

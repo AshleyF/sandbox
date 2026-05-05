@@ -1,0 +1,4 @@
+\ Factorial: fact 5 = 120
+main fact 5
+fact if [* fact dec dup] [1] = 0 dup
+  dec - 1

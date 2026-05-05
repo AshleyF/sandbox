@@ -1,0 +1,4 @@
+\ Factorial with fixed base case: drop the residual n, then push 1
+main fact 5
+fact if [* fact dec dup] [drop 1] = 0 dup
+  dec - 1

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTD Flow</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>GTD Flow</h1>
+      </div>
+      <nav class="nav-lists">
+        <a href="#" class="nav-item active" data-list="inbox">
+          <span class="nav-icon">📥</span>
+          <span class="nav-label">Inbox</span>
+          <span class="nav-count" id="count-inbox">0</span>
+        </a>
+        <a href="#" class="nav-item" data-list="today">
+          <span class="nav-icon">⭐</span>
+          <span class="nav-label">Today</span>
+          <span class="nav-count" id="count-today">0</span>
+        </a>
+        <a href="#" class="nav-item" data-list="upcoming">
+          <span class="nav-icon">📅</span>
+          <span class="nav-label">Upcoming</span>
+          <span class="nav-count" id="count-upcoming">0</span>
+        </a>
+        <a href="#" class="nav-item" data-list="anytime">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label">Anytime</span>
+          <span class="nav-count" id="count-anytime">0</span>
+        </a>
+        <a href="#" class="nav-item" data-list="waiting">
+          <span class="nav-icon">⏳</span>
+          <span class="nav-label">Waiting For</span>
+          <span class="nav-count" id="count-waiting">0</span>
+        </a>
+        <a href="#" class="nav-item" data-list="someday">
+          <span class="nav-icon">💭</span>
+          <span class="nav-label">Someday</span>
+          <span class="nav-count" id="count-someday">0</span>
+        </a>
+        <div class="nav-separator"></div>
+        <a href="#" class="nav-item" data-list="logbook">
+          <span class="nav-icon">📗</span>
+          <span class="nav-label">Logbook</span>
+          <span class="nav-count" id="count-logbook">0</span>
+        </a>
+        <a href="#" class="nav-item" data-list="trash">
+          <span class="nav-icon">🗑️</span>
+          <span class="nav-label">Trash</span>
+          <span class="nav-count" id="count-trash">0</span>
+        </a>
+      </nav>
+
+      <div class="nav-separator"></div>
+
+      <div class="nav-section-title">Parent Tasks</div>
+      <div id="parent-list" class="nav-subsection"></div>
+
+      <div class="nav-section-title">Areas</div>
+      <div id="area-list" class="nav-subsection"></div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content">
+      <div class="content-header">
+        <h2 id="list-title">Inbox</h2>
+        <button class="btn-add" id="btn-add" title="Add task">+</button>
+      </div>
+
+      <!-- New task input (hidden by default) -->
+      <div class="new-task-form" id="new-task-form" style="display:none;">
+        <input type="text" id="new-task-input" placeholder="New task..." autofocus>
+        <div class="new-task-actions">
+          <input type="text" id="new-task-notes" placeholder="Notes (optional)">
+          <button class="btn-save" id="btn-save-task">Add</button>
+          <button class="btn-cancel" id="btn-cancel-task">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Task list -->
+      <div class="task-list" id="task-list">
+        <div class="empty-state" id="empty-state">
+          <p>No items here yet.</p>
+        </div>
+      </div>
+
+      <!-- Task detail panel (shown when a task is selected) -->
+      <div class="task-detail" id="task-detail" style="display:none;">
+        <div class="detail-header">
+          <button class="btn-back" id="btn-back">← Back</button>
+          <button class="btn-delete" id="btn-detail-delete">Delete</button>
+        </div>
+        <div class="detail-body">
+          <input type="text" class="detail-title" id="detail-title">
+          <textarea class="detail-notes" id="detail-notes" placeholder="Notes..."></textarea>
+
+          <div class="detail-fields">
+            <label>List
+              <select id="detail-list">
+                <option value="inbox">Inbox</option>
+                <option value="today">Today</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="anytime">Anytime</option>
+                <option value="waiting">Waiting For</option>
+                <option value="someday">Someday</option>
+              </select>
+            </label>
+            <label>Scheduled
+              <input type="date" id="detail-when-date">
+            </label>
+            <label>Deadline
+              <input type="date" id="detail-deadline">
+            </label>
+            <label>Tags
+              <input type="text" id="detail-tags" placeholder="comma-separated">
+            </label>
+            <label>Parent Task
+              <select id="detail-parent">
+                <option value="">None (top-level)</option>
+              </select>
+            </label>
+            <label>Area
+              <select id="detail-area">
+                <option value="">None</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- Checklist -->
+          <div class="detail-checklist">
+            <h4>Checklist</h4>
+            <div id="checklist-items"></div>
+            <div class="checklist-add">
+              <input type="text" id="checklist-new" placeholder="Add step...">
+            </div>
+          </div>
+
+          <button class="btn-save detail-save" id="btn-detail-save">Save Changes</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Agent Chat Panel -->
+    <aside class="chat-panel">
+      <div class="chat-header">
+        <h3>GTD Agent</h3>
+        <button class="btn-clear-chat" id="btn-clear-chat" title="New conversation">🔄</button>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-message assistant">
+          <div class="chat-bubble">
+            Hi! I'm your GTD coach. Tell me what's on your mind, and I'll help you
+            capture, organize, and get things done. 🚀
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="voice-status" id="voice-status" style="display:none;">
+          <span class="voice-dot"></span>
+          <span id="voice-status-text">Voice active</span>
+        </div>
+        <textarea id="chat-input" placeholder="Talk to your GTD agent..." rows="1"></textarea>
+        <button class="btn-mic" id="btn-mic" title="Voice chat">🎙</button>
+        <button class="btn-send" id="btn-send">Send</button>
+      </div>
+      <audio id="voice-audio" autoplay></audio>
+    </aside>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

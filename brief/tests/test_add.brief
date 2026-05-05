@@ -1,0 +1,4 @@
+\ ── Basic tests for the Brief interpreter ──
+
+\ Simple arithmetic: 3 + 4 = 7
+main + 4 3

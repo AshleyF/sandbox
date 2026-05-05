@@ -1,0 +1,4 @@
+\ Minimal factorial trace: just fact 3
+main fact 3
+fact if [* fact dec dup] [drop 1] = 0 dup
+  dec - 1
