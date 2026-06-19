@@ -1,0 +1,446 @@
+{
+  "version": 4,
+  "description": "LLM-derived vocabulary. Each tag was proposed by an LLM after reading a large random sample of captions. Tags are applied per-caption by an LLM in the apply phase.",
+  "source": {
+    "method": "gpt-5.2-chat reading 600 sampled captions",
+    "sample_size": 600
+  },
+  "tagging": {
+    "applier": "gpt-5-mini",
+    "batch_size": 25
+  },
+  "categories": [
+    {
+      "name": "people-and-relationships",
+      "description": "people, roles, and family relationships",
+      "tags": [
+        {
+          "tag": "baby",
+          "description": "infants being held, in strollers, high chairs, or close-up portraits"
+        },
+        {
+          "tag": "toddler",
+          "description": "young children roughly ages 1–3 in candid or posed scenes"
+        },
+        {
+          "tag": "child",
+          "description": "children beyond toddler age in everyday activities or portraits"
+        },
+        {
+          "tag": "teenager",
+          "description": "teen-aged individuals posing, attending events, or socializing"
+        },
+        {
+          "tag": "adult",
+          "description": "adults featured as the main subject in casual or formal settings"
+        },
+        {
+          "tag": "family",
+          "description": "parents and children together, family group photos, home moments"
+        },
+        {
+          "tag": "couple",
+          "description": "romantic pairs posing, kissing, or sharing activities"
+        },
+        {
+          "tag": "bride",
+          "description": "women wearing wedding gowns during ceremonies or receptions"
+        },
+        {
+          "tag": "groom",
+          "description": "men in wedding attire during ceremonies or receptions"
+        },
+        {
+          "tag": "wedding-guests",
+          "description": "friends and family attending weddings or receptions"
+        },
+        {
+          "tag": "grandparent",
+          "description": "elderly family members holding or interacting with children"
+        },
+        {
+          "tag": "friends",
+          "description": "groups of friends posing together casually or at events"
+        }
+      ]
+    },
+    {
+      "name": "weddings-and-celebrations",
+      "description": "weddings, parties, and formal celebrations",
+      "tags": [
+        {
+          "tag": "wedding-ceremony",
+          "description": "formal marriage ceremonies indoors or outdoors"
+        },
+        {
+          "tag": "wedding-reception",
+          "description": "wedding parties, dances, speeches, and receptions"
+        },
+        {
+          "tag": "first-dance",
+          "description": "bride and groom dancing together at receptions"
+        },
+        {
+          "tag": "engagement-ring",
+          "description": "close-ups of engagement or wedding rings"
+        },
+        {
+          "tag": "birthday-party",
+          "description": "birthday celebrations with cakes, candles, and gifts"
+        },
+        {
+          "tag": "graduation",
+          "description": "graduation ceremonies, caps, gowns, and celebrations"
+        },
+        {
+          "tag": "holiday-celebration",
+          "description": "Christmas, Halloween, Easter, and other holidays"
+        },
+        {
+          "tag": "prom-or-formal",
+          "description": "prom, homecoming, or formal dress gatherings"
+        }
+      ]
+    },
+    {
+      "name": "animals",
+      "description": "animals, pets, and wildlife",
+      "tags": [
+        {
+          "tag": "dog",
+          "description": "dogs of any breed in homes or outdoors"
+        },
+        {
+          "tag": "cat",
+          "description": "domestic cats or kittens"
+        },
+        {
+          "tag": "bird",
+          "description": "birds in nature, zoos, or close-up views"
+        },
+        {
+          "tag": "monkey",
+          "description": "monkeys such as macaques or howler monkeys"
+        },
+        {
+          "tag": "duck",
+          "description": "ducks near water or shorelines"
+        },
+        {
+          "tag": "sea-lion",
+          "description": "sea lions swimming or surfacing in water"
+        },
+        {
+          "tag": "farm-animal",
+          "description": "ponies, chicks, or other farm animals"
+        },
+        {
+          "tag": "insect",
+          "description": "spiders, ladybugs, or other insects in close-up"
+        },
+        {
+          "tag": "pet-portrait",
+          "description": "animals posed or highlighted as the main subject"
+        }
+      ]
+    },
+    {
+      "name": "places-and-landmarks",
+      "description": "recognizable places, cities, and landmarks",
+      "tags": [
+        {
+          "tag": "beach",
+          "description": "sandy shorelines, ocean waves, and coastal scenes"
+        },
+        {
+          "tag": "mountains",
+          "description": "mountain landscapes, ridges, and overlooks"
+        },
+        {
+          "tag": "cityscape",
+          "description": "urban skylines, downtowns, or city views"
+        },
+        {
+          "tag": "venice",
+          "description": "Venetian canals, gondolas, and architecture"
+        },
+        {
+          "tag": "japan",
+          "description": "Japanese temples, shrines, gardens, or streets"
+        },
+        {
+          "tag": "disney-park",
+          "description": "Disney theme parks, attractions, and characters"
+        },
+        {
+          "tag": "european-street",
+          "description": "historic European streets and old-town scenes"
+        },
+        {
+          "tag": "church-or-cathedral",
+          "description": "religious buildings, churches, and cathedrals"
+        },
+        {
+          "tag": "desert-landscape",
+          "description": "deserts, canyons, and arid landscapes"
+        }
+      ]
+    },
+    {
+      "name": "travel-and-transportation",
+      "description": "travel scenes and modes of transport",
+      "tags": [
+        {
+          "tag": "cruise-ship",
+          "description": "large cruise ships and onboard scenes"
+        },
+        {
+          "tag": "airplane",
+          "description": "aircraft interiors, windows, or wings"
+        },
+        {
+          "tag": "car",
+          "description": "cars, dashboards, road views, or interiors"
+        },
+        {
+          "tag": "bridge",
+          "description": "bridges viewed from cars or on foot"
+        },
+        {
+          "tag": "ferry",
+          "description": "ferries crossing water or viewed from above"
+        },
+        {
+          "tag": "train-or-tram",
+          "description": "trains, trams, or rail infrastructure"
+        },
+        {
+          "tag": "hotel-room",
+          "description": "hotel interiors and travel accommodations"
+        }
+      ]
+    },
+    {
+      "name": "technology-and-objects",
+      "description": "technology, devices, and everyday objects",
+      "tags": [
+        {
+          "tag": "calculator",
+          "description": "vintage or modern calculators, especially HP models"
+        },
+        {
+          "tag": "computer",
+          "description": "laptops, desktops, monitors, or computer screens"
+        },
+        {
+          "tag": "smartphone",
+          "description": "phones, screenshots, text messages, or apps"
+        },
+        {
+          "tag": "robot",
+          "description": "robots, robotic arms, or humanoid machines"
+        },
+        {
+          "tag": "camera",
+          "description": "cameras, lenses, or photography equipment"
+        },
+        {
+          "tag": "keyboard",
+          "description": "computer keyboards, especially mechanical ones"
+        },
+        {
+          "tag": "electronics",
+          "description": "circuit boards, components, or electronic equipment"
+        },
+        {
+          "tag": "calculator-collection",
+          "description": "collections or displays of multiple calculators"
+        }
+      ]
+    },
+    {
+      "name": "nature-and-outdoors",
+      "description": "natural scenes and outdoor environments",
+      "tags": [
+        {
+          "tag": "forest",
+          "description": "wooded areas, trees, and forest paths"
+        },
+        {
+          "tag": "lake",
+          "description": "lakeshores, calm water, and reflections"
+        },
+        {
+          "tag": "waterfall",
+          "description": "waterfalls in natural settings"
+        },
+        {
+          "tag": "garden",
+          "description": "gardens, flowers, and landscaped spaces"
+        },
+        {
+          "tag": "sunset-or-sunrise",
+          "description": "scenes with low sun, dawn, or dusk lighting"
+        },
+        {
+          "tag": "ocean",
+          "description": "open ocean views and seascapes"
+        },
+        {
+          "tag": "snow",
+          "description": "snowy landscapes or winter scenes"
+        }
+      ]
+    },
+    {
+      "name": "food-and-drink",
+      "description": "meals, snacks, and beverages",
+      "tags": [
+        {
+          "tag": "dessert",
+          "description": "cakes, pastries, sweets, and desserts"
+        },
+        {
+          "tag": "coffee",
+          "description": "coffee drinks, mugs, beans, or cafés"
+        },
+        {
+          "tag": "restaurant-meal",
+          "description": "plated meals served at restaurants"
+        },
+        {
+          "tag": "home-cooking",
+          "description": "homemade food prepared in kitchens"
+        },
+        {
+          "tag": "snack-food",
+          "description": "packaged snacks, treats, or casual eating"
+        },
+        {
+          "tag": "celebration-cake",
+          "description": "cakes used for birthdays or celebrations"
+        }
+      ]
+    },
+    {
+      "name": "sports-and-activities",
+      "description": "sports, recreation, and physical activities",
+      "tags": [
+        {
+          "tag": "soccer",
+          "description": "youth or casual soccer games and teams"
+        },
+        {
+          "tag": "football",
+          "description": "American football or flag football scenes"
+        },
+        {
+          "tag": "rock-climbing",
+          "description": "climbing walls, harnesses, or bouldering"
+        },
+        {
+          "tag": "swimming",
+          "description": "swimming pools, beaches, or water play"
+        },
+        {
+          "tag": "skating",
+          "description": "ice skating or roller skating scenes"
+        },
+        {
+          "tag": "outdoor-play",
+          "description": "children playing in parks or playgrounds"
+        }
+      ]
+    },
+    {
+      "name": "entertainment-and-media",
+      "description": "media, pop culture, and entertainment",
+      "tags": [
+        {
+          "tag": "meme",
+          "description": "internet memes, humorous images, or screenshots"
+        },
+        {
+          "tag": "video-game",
+          "description": "video game screenshots or characters"
+        },
+        {
+          "tag": "concert",
+          "description": "live music performances or crowds"
+        },
+        {
+          "tag": "movie-or-tv",
+          "description": "film, television, or character references"
+        },
+        {
+          "tag": "comic",
+          "description": "comic strips or illustrated panels"
+        },
+        {
+          "tag": "animated-art",
+          "description": "3D or 2D animated illustrations"
+        }
+      ]
+    },
+    {
+      "name": "science-and-space",
+      "description": "astronomy and scientific imagery",
+      "tags": [
+        {
+          "tag": "sun",
+          "description": "telescopic images or views of the Sun"
+        },
+        {
+          "tag": "moon",
+          "description": "full moons, eclipses, or lunar close-ups"
+        },
+        {
+          "tag": "mars",
+          "description": "telescopic images of the planet Mars"
+        },
+        {
+          "tag": "saturn",
+          "description": "telescopic images of Saturn and its rings"
+        },
+        {
+          "tag": "galaxy",
+          "description": "deep-sky images of galaxies"
+        },
+        {
+          "tag": "nebula",
+          "description": "nebulae and star-forming regions"
+        },
+        {
+          "tag": "telescope",
+          "description": "telescopes or astrophotography setups"
+        }
+      ]
+    },
+    {
+      "name": "documents-and-screenshots",
+      "description": "documents, receipts, and screen captures",
+      "tags": [
+        {
+          "tag": "text-message-screenshot",
+          "description": "screenshots of SMS or iMessage conversations"
+        },
+        {
+          "tag": "receipt",
+          "description": "financial receipts or transaction records"
+        },
+        {
+          "tag": "certificate",
+          "description": "official certificates or awards"
+        },
+        {
+          "tag": "app-screenshot",
+          "description": "mobile or desktop app interface screenshots"
+        },
+        {
+          "tag": "document-scan",
+          "description": "scanned letters, forms, or paperwork"
+        }
+      ]
+    }
+  ]
+}

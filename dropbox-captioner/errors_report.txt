@@ -1,0 +1,277 @@
+Dropbox Captioner — Error Report
+Generated: 2026-06-16 19:40:44
+==============================================================================
+
+Run summary:
+  done         52056
+  pending          0
+  error          231
+  skipped     104113
+  TOTAL       156400
+
+Error totals by category:
+  content_filter          195
+    Model safety filter rejected the image (typically photos of identifiable minors).
+    No prompt change fixes this; the filter is image-based.
+  transient_network        20
+    Network glitch (connection reset / remote disconnected).
+    Retriable; not retried further in this run.
+  timeout                   4
+    Per-photo timeout exceeded.
+  auth                      8
+    Copilot CLI auth blip; resolved itself before/after.
+  empty_caption             1
+    Model returned empty output.
+  api_error                 1
+    Upstream API returned a 4xx error (e.g. invalid request).
+  other                     2
+    Uncategorized.
+
+==============================================================================
+Detailed listing
+==============================================================================
+
+--- content_filter (195 photos) ---
+  [  588.2 KB] attempts=4  /Inbox/vacation 2005/day 12 - Panama Canal/P1010094.JPG
+  [  605.1 KB] attempts=4  /Inbox/vacation 2005/day 12 - Panama Canal/P1010095.JPG
+  [  604.1 KB] attempts=4  /Inbox/vacation 2005/day 12 - Panama Canal/P1010126.JPG
+  [  663.4 KB] attempts=4  /Inbox/vacation 2005/day 16 - Bahamas/_P1010112.JPG
+  [  638.7 KB] attempts=4  /Inbox/vacation 2005/day 17 - Castaway Cay/P1010144.JPG
+  [  600.1 KB] attempts=4  /Inbox/vacation 2005/day 5 - Baja Coast/_P1010119.JPG
+  [  654.8 KB] attempts=4  /Inbox/vacation 2005/old day 15/P1010112.JPG
+  [  626.2 KB] attempts=4  /Inbox/vacation 2005/old day 15/P1010144.JPG
+  [  179.2 KB] attempts=3  /Photos/2000/2000-02-16 4285.JPG
+  [  429.1 KB] attempts=3  /Photos/2000/2000-06-18 4377.JPG
+  [  358.7 KB] attempts=3  /Photos/2000/2000-08-21 4410.JPG
+  [  664.7 KB] attempts=3  /Photos/2001/2001-01-01 3302.JPG
+  [  651.0 KB] attempts=3  /Photos/2001/2001-01-01 3339.JPG
+  [  631.0 KB] attempts=3  /Photos/2001/2001-01-01 3340.JPG
+  [  638.0 KB] attempts=3  /Photos/2001/2001-01-01 3344.JPG
+  [  648.3 KB] attempts=3  /Photos/2001/2001-01-01 3359.JPG
+  [  650.1 KB] attempts=3  /Photos/2001/2001-01-01 3361.JPG
+  [  632.3 KB] attempts=3  /Photos/2001/2001-01-01 3364.JPG
+  [  646.4 KB] attempts=3  /Photos/2001/2001-01-01 3365.JPG
+  [  662.2 KB] attempts=3  /Photos/2001/2001-01-01 3366.JPG
+  [  654.2 KB] attempts=3  /Photos/2001/2001-01-01 3367.JPG
+  [  642.1 KB] attempts=3  /Photos/2001/2001-01-01 3368.JPG
+  [  656.6 KB] attempts=2  /Photos/2001/2001-01-01 3369.JPG
+  [  634.0 KB] attempts=2  /Photos/2001/2001-01-01 3370.JPG
+  [  642.8 KB] attempts=2  /Photos/2001/2001-01-01 3372.JPG
+  [  620.0 KB] attempts=2  /Photos/2001/2001-01-01 3373.JPG
+  [  689.1 KB] attempts=2  /Photos/2001/2001-01-01 3737.JPG
+  [  652.5 KB] attempts=2  /Photos/2001/2001-01-01 3820.JPG
+  [  636.3 KB] attempts=2  /Photos/2001/2001-01-01 3917.JPG
+  [  675.6 KB] attempts=2  /Photos/2001/2001-01-01 3919.JPG
+  [  640.0 KB] attempts=2  /Photos/2001/2001-01-01 3992.JPG
+  [  621.2 KB] attempts=2  /Photos/2001/2001-01-01 3993.JPG
+  [  677.7 KB] attempts=2  /Photos/2001/2001-01-01 4004.JPG
+  [  224.1 KB] attempts=2  /Photos/2001/2001-08-04 3840.JPG
+  [  355.6 KB] attempts=2  /Photos/2001/2001-12-06 3593.JPG
+  [  367.6 KB] attempts=2  /Photos/2001/2001-12-09 3603.JPG
+  [  387.3 KB] attempts=2  /Photos/2001/2001-12-09 3755.JPG
+  [  634.9 KB] attempts=2  /Photos/2002/2002-05-04 1403.JPG
+  [  623.6 KB] attempts=2  /Photos/2002/2002-05-04 3061.JPG
+  [  634.1 KB] attempts=2  /Photos/2002/2002-05-04 3094.JPG
+  [  631.3 KB] attempts=2  /Photos/2002/2002-06-30 2350.JPG
+  [  642.8 KB] attempts=2  /Photos/2002/2002-07-21 2467.JPG
+  [  622.4 KB] attempts=1  /Photos/2002/2002-12-19 2795.JPG
+  [  492.6 KB] attempts=1  /Photos/2002/2002-12-24 2590.JPG
+  [  649.5 KB] attempts=1  /Photos/2003/2003-01-14 1464.JPG
+  [  632.9 KB] attempts=1  /Photos/2003/2003-01-14 1877.JPG
+  [  645.7 KB] attempts=1  /Photos/2003/2003-01-14 1878.JPG
+  [  663.2 KB] attempts=1  /Photos/2003/2003-01-14 1879.JPG
+  [  641.0 KB] attempts=1  /Photos/2003/2003-01-14 1944.JPG
+  [  655.0 KB] attempts=1  /Photos/2003/2003-01-14 2046.JPG
+  [  653.5 KB] attempts=1  /Photos/2003/2003-01-14 2276.JPG
+  [  695.0 KB] attempts=1  /Photos/2003/2003-02-09 1881.JPG
+  [  627.0 KB] attempts=1  /Photos/2003/2003-02-15 1882.JPG
+  [  652.7 KB] attempts=1  /Photos/2003/2003-02-15 2278.JPG
+  [  628.1 KB] attempts=1  /Photos/2003/2003-03-06 2132.JPG
+  [  633.5 KB] attempts=1  /Photos/2003/2003-04-20 1578.JPG
+  [  645.5 KB] attempts=1  /Photos/2003/2003-05-31 1772.JPG
+  [  656.3 KB] attempts=1  /Photos/2003/2003-05-31 1773.JPG
+  [  634.7 KB] attempts=1  /Photos/2003/2003-05-31 2053.JPG
+  [  612.5 KB] attempts=1  /Photos/2003/2003-05-31 2129.JPG
+  [  615.6 KB] attempts=1  /Photos/2003/2003-06-30 1699.JPG
+  [  636.6 KB] attempts=1  /Photos/2003/2003-12-24 2236.JPG
+  [  246.5 KB] attempts=1  /Photos/2004/2004-01-23 515.JPG
+  [  718.6 KB] attempts=1  /Photos/2004/2004-06-17 331.JPG
+  [  621.7 KB] attempts=1  /Photos/2004/2004-06-17 652.JPG
+  [  572.9 KB] attempts=1  /Photos/2004/2004-07-10 676.JPG
+  [  624.1 KB] attempts=1  /Photos/2004/2004-07-11 301.JPG
+  [  636.1 KB] attempts=1  /Photos/2004/2004-07-11 302.JPG
+  [  642.7 KB] attempts=1  /Photos/2004/2004-07-11 306.JPG
+  [  635.2 KB] attempts=1  /Photos/2004/2004-07-11 685.JPG
+  [  605.2 KB] attempts=1  /Photos/2004/2004-07-25 699.JPG
+  [  617.4 KB] attempts=1  /Photos/2004/2004-07-25 700.JPG
+  [  601.8 KB] attempts=1  /Photos/2004/2004-09-10 488.JPG
+  [  623.5 KB] attempts=1  /Photos/2004/2004-09-10 491.JPG
+  [  645.2 KB] attempts=1  /Photos/2004/2004-09-10 492.JPG
+  [  518.9 KB] attempts=1  /Photos/2004/2004-09-10 674.JPG
+  [  612.3 KB] attempts=1  /Photos/2004/2004-12-04 239.JPG
+  [  637.3 KB] attempts=1  /Photos/2005/2005-05-01 115.JPG
+  [  621.3 KB] attempts=1  /Photos/2005/2005-05-01 126.JPG
+  [  619.2 KB] attempts=1  /Photos/2005/2005-05-01 127.JPG
+  [  626.7 KB] attempts=1  /Photos/2005/2005-05-01 132.JPG
+  [  626.6 KB] attempts=1  /Photos/2005/2005-05-01 139.JPG
+  [ 2170.5 KB] attempts=1  /Photos/2006/DSCN0089.JPG
+  [ 1792.8 KB] attempts=1  /Photos/2006/DSCN0092.JPG
+  [ 2165.4 KB] attempts=1  /Photos/2006/DSCN0184.JPG
+  [ 1921.3 KB] attempts=1  /Photos/2006/SEP/DSCN0364.JPG
+  [ 1930.4 KB] attempts=1  /Photos/2006/SEP/DSCN0365.JPG
+  [ 2111.5 KB] attempts=1  /Photos/2006/SEP/DSCN0366.JPG
+  [ 1774.7 KB] attempts=1  /Photos/2006/SEP/DSCN0423.JPG
+  [  788.1 KB] attempts=1  /Photos/2007/AUG/DSCN0899.JPG
+  [  932.7 KB] attempts=1  /Photos/2007/AUG/DSCN0900.JPG
+  [  934.9 KB] attempts=1  /Photos/2007/AUG/DSCN0904.JPG
+  [  980.6 KB] attempts=1  /Photos/2007/AUG/DSCN0905.JPG
+  [  817.2 KB] attempts=1  /Photos/2007/AUG/DSCN0913.JPG
+  [  965.0 KB] attempts=1  /Photos/2007/AUG/DSCN0915.JPG
+  [  928.7 KB] attempts=1  /Photos/2007/AUG/DSCN0917.JPG
+  [  861.3 KB] attempts=1  /Photos/2007/AUG/DSCN0920.JPG
+  [  859.5 KB] attempts=1  /Photos/2007/AUG/DSCN0921.JPG
+  [  901.8 KB] attempts=1  /Photos/2007/AUG/DSCN0987.JPG
+  [  893.8 KB] attempts=1  /Photos/2007/Disney World/Day 0/DSCN0988.JPG
+  [  904.7 KB] attempts=1  /Photos/2007/Disney World/Day 1/DSCN1017.JPG
+  [ 1006.4 KB] attempts=1  /Photos/2007/OCT/DSCN1296.JPG
+  [  906.5 KB] attempts=1  /Photos/2007/OCT/DSCN1305.JPG
+  [  945.9 KB] attempts=1  /Photos/2007/OCT/DSCN1306.JPG
+  [  915.8 KB] attempts=1  /Photos/2007/OCT/DSCN1307.JPG
+  [  942.1 KB] attempts=1  /Photos/2007/OCT/DSCN1308.JPG
+  [  898.6 KB] attempts=1  /Photos/2007/OCT/DSCN1309.JPG
+  [  836.4 KB] attempts=1  /Photos/2007/OCT/DSCN1310.JPG
+  [  890.5 KB] attempts=1  /Photos/2007/OCT/DSCN1311.JPG
+  [  981.3 KB] attempts=1  /Photos/2007/OCT/DSCN1312.JPG
+  [ 1039.3 KB] attempts=1  /Photos/2007/OCT/DSCN1313.JPG
+  [ 1014.7 KB] attempts=1  /Photos/2007/OCT/DSCN1340.JPG
+  [  750.7 KB] attempts=1  /Photos/2007/OCT/DSCN1359.JPG
+  [  793.8 KB] attempts=1  /Photos/2007/OCT/DSCN1372.JPG
+  [  844.7 KB] attempts=1  /Photos/2007/SEP/DSCN1164.JPG
+  [ 1661.3 KB] attempts=1  /Photos/2008/Apr/DSCN0045.JPG
+  [   40.1 KB] attempts=1  /Photos/2008/Aug/Low Res/Katie and Steven 08-15-08 122.jpg
+  [   63.1 KB] attempts=1  /Photos/2008/Aug/Low Res/Katie and Steven 08-15-08 123.jpg
+  [  795.7 KB] attempts=1  /Photos/2008/DSCN1524.JPG
+  [  799.7 KB] attempts=1  /Photos/2008/DSCN1533.JPG
+  [ 1021.4 KB] attempts=1  /Photos/2008/DSCN1540.JPG
+  [ 1618.0 KB] attempts=1  /Photos/2008/Jul/DSCN0104.JPG
+  [ 1347.1 KB] attempts=1  /Photos/2008/Jul/DSCN0117.JPG
+  [ 1627.0 KB] attempts=1  /Photos/2008/Jul/DSCN0119.JPG
+  [ 1683.7 KB] attempts=1  /Photos/2008/Jul/DSCN0124.JPG
+  [  474.2 KB] attempts=1  /Photos/2009/iPhone/IMG_0873.JPG
+  [  619.8 KB] attempts=1  /Photos/2009/iPhone/IMG_0971.JPG
+  [ 1051.4 KB] attempts=1  /Photos/APR 2005/100_0028.jpg
+  [  638.0 KB] attempts=1  /Photos/APR 2005/APR 2005/P1010156.JPG
+  [  648.7 KB] attempts=1  /Photos/APR 2005/APR 2005/P1010188.JPG
+  [  636.9 KB] attempts=1  /Photos/APR 2005/APR 2005/P1010192.JPG
+  [  596.1 KB] attempts=1  /Photos/APR 2005/APR 2005/P1010210.JPG
+  [  633.0 KB] attempts=1  /Photos/APR 2005/APR 2005/P1010211.JPG
+  [ 1887.8 KB] attempts=1  /Photos/APR 2005/Camera upload 10-09-05 057.jpg
+  [  671.1 KB] attempts=1  /Photos/APR 2005/OCT 2005/P1010001.JPG
+  [  663.3 KB] attempts=1  /Photos/APR 2005/P1010082.JPG
+  [  635.7 KB] attempts=1  /Photos/APR 2005/P1010083.JPG
+  [  650.0 KB] attempts=1  /Photos/APR 2005/P1010084.JPG
+  [  474.2 KB] attempts=1  /Photos/Ashley's iPhone/Photo Apr 04, 11 30 12 AM.jpg
+  [  334.5 KB] attempts=1  /Photos/Ashley's iPhone/Photo Feb 17, 9 29 05 PM.jpg
+  [  779.2 KB] attempts=1  /Photos/Ashley's iPhone/Photo Jul 04, 2 52 36 PM.jpg
+  [  772.0 KB] attempts=1  /Photos/Ashley's iPhone/Photo Jun 20, 11 43 14 AM.jpg
+  [  582.4 KB] attempts=1  /Photos/Disney Vacation 2005/Day 12 - Panama Canal/P1010094.JPG
+  [  599.3 KB] attempts=1  /Photos/Disney Vacation 2005/Day 12 - Panama Canal/P1010095.JPG
+  [  598.3 KB] attempts=1  /Photos/Disney Vacation 2005/Day 12 - Panama Canal/P1010126.JPG
+  [  645.1 KB] attempts=1  /Photos/Disney Vacation 2005/Day 5 - Baja Coast/P1010110.JPG
+  [  594.3 KB] attempts=1  /Photos/Disney Vacation 2005/Day 5 - Baja Coast/_P1010119.JPG
+  [  661.3 KB] attempts=1  /Photos/Disney Vacation 2005/day 16 - Bahamas/_P1010112.JPG
+  [  632.9 KB] attempts=1  /Photos/Disney Vacation 2005/day 17 - Castaway Cay/P1010144-AshleyF on Work.JPG
+  [  632.9 KB] attempts=1  /Photos/Disney Vacation 2005/day 17 - Castaway Cay/P1010144.JPG
+  [ 1627.0 KB] attempts=1  /Photos/Flickr/2905080281_ee703fc150_o.jpg
+  [ 1683.7 KB] attempts=1  /Photos/Flickr/2905084479_eabf646871_o.jpg
+  [   40.1 KB] attempts=1  /Photos/Flickr/2905275567_88c465155d_o.jpg
+  [ 1661.3 KB] attempts=1  /Photos/Flickr/2906105704_00fbeef6f3_o.jpg
+  [   63.1 KB] attempts=1  /Photos/Flickr/2906130928_23761edebe_o.jpg
+  [ 2638.8 KB] attempts=1  /Photos/JUN 2006/100_0706.jpg
+  [ 2511.1 KB] attempts=1  /Photos/JUN 2006/100_0717.jpg
+  [ 1516.6 KB] attempts=1  /Photos/JUN 2006/100_0720.jpg
+  [ 1434.8 KB] attempts=1  /Photos/Kaitlyn's Camera/101_0964.JPG
+  [ 1340.9 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1279.JPG
+  [ 1452.6 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1281.JPG
+  [ 1721.5 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1356.JPG
+  [ 1696.7 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1358.JPG
+  [ 1653.9 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1366.JPG
+  [ 1598.4 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1369.JPG
+  [ 1645.6 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1403.JPG
+  [ 1646.1 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1404.JPG
+  [ 1411.5 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1406.JPG
+  [ 1720.5 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1410.JPG
+  [ 1535.8 KB] attempts=1  /Photos/Kaitlyn's Camera/101_1663.JPG
+  [ 1189.6 KB] attempts=1  /Photos/Kaitlyn's Camera/101_2042.JPG
+  [ 1438.8 KB] attempts=1  /Photos/Kaitlyn's Camera/101_2533.JPG
+  [  647.2 KB] attempts=1  /Photos/fileme/P1010233.JPG
+  [  618.2 KB] attempts=1  /Photos/fileme/P1010245.JPG
+  [  680.2 KB] attempts=1  /Photos/fileme/P1010261.JPG
+  [   46.6 KB] attempts=1  /Photos/iPhoto Library/Data/2000/2001/2001-01-01 3362.jpg
+  [  639.3 KB] attempts=1  /Photos/iPhoto Library/Originals/2000/2001/2001-01-01 3344.JPG
+  [  637.6 KB] attempts=1  /Photos/iPhoto Library/Originals/2000/2001/2001-01-01 3917.JPG
+  [  641.4 KB] attempts=1  /Photos/iPhoto Library/Originals/2000/2001/2001-01-01 3992.JPG
+  [ 1340.9 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1279.JPG
+  [ 1452.6 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1281.JPG
+  [ 1696.7 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1358.JPG
+  [ 1598.4 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1369.JPG
+  [ 1645.6 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1403.JPG
+  [ 1646.1 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1404.JPG
+  [ 1411.5 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1406.JPG
+  [ 1720.5 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1410.JPG
+  [ 1535.8 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_1663.JPG
+  [ 1189.6 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_2042.JPG
+  [ 1246.4 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_2049.JPG
+  [ 1438.8 KB] attempts=1  /photos/old sd card/dcim/101KC913/101_2533.JPG
+  [ 2665.1 KB] attempts=1  /photos/pics/2012/2012-07-13 21.41.32.jpg
+  [ 2171.1 KB] attempts=1  /photos/pics/2013/2013-06-21 21.09.35.jpg
+  [ 2774.6 KB] attempts=1  /photos/pics/2013/2013-06-23 20.49.23.jpg
+  [ 2263.6 KB] attempts=1  /photos/pics/2013/2013-10-17 17.42.27.jpg
+
+--- transient_network (20 photos) ---
+  [ 1819.8 KB] attempts=1  /Photos/2009/iPhone/IMG_1162.JPG
+  [  624.1 KB] attempts=1  /Photos/APR 2005/APR 2005/P1010012.JPG
+  [ 1875.9 KB] attempts=1  /Photos/Ashley's iPhone/Photo Apr 06, 10 34 09 AM.jpg
+  [ 1612.7 KB] attempts=1  /Photos/Dad's Camera/100_0239.JPG
+  [ 1417.4 KB] attempts=1  /Photos/Kaitlyn's Camera/101_2536.JPG
+  [   47.9 KB] attempts=1  /Photos/iPhoto Library/Data/2000/2000/2000-07-03 4283.jpg
+  [  399.8 KB] attempts=1  /Photos/iPhoto Library/Originals/2000/2001/2001-11-30 3665.JPG
+  [ 1394.2 KB] attempts=1  /Web/ienrst.com/Archive/HP/35/Manual/Full/Page34.png
+  [ 1829.9 KB] attempts=1  /photos/pics/2012/2012-07-29 09.49.55.jpg
+  [ 1649.0 KB] attempts=1  /photos/pics/2013/2013-06-29 16.04.12.jpg
+  [ 1258.3 KB] attempts=1  /photos/pics/2014/2014-06-06 15.25.49.jpg
+  [  253.5 KB] attempts=1  /photos/pics/2014/2014-07-20 16.15.06.jpg
+  [ 1344.0 KB] attempts=1  /photos/pics/2015/2015-01-07 14.35.02.jpg
+  [ 1691.5 KB] attempts=1  /photos/pics/2015/2015-05-05 18.02.16.jpg
+  [  141.7 KB] attempts=1  /photos/pics/2015/2015-07-25 18.52.42.png
+  [  136.3 KB] attempts=1  /photos/pics/2015/2015-07-25 19.00.44.png
+  [ 3859.6 KB] attempts=1  /photos/pics/2017/2017-11-23 05.52.53.jpg
+  [  441.1 KB] attempts=1  /robotics/lbd/learningbydemonstration v1/shell/Scenes/SceneC1.jpg
+  [  499.7 KB] attempts=1  /robotics/lbe/proxy/sample/pme/Background.png
+  [  263.6 KB] attempts=1  /tracey/Camera 07 DEC 2014/IMG_20140511_193915_219.jpg
+
+--- timeout (4 photos) ---
+  [ 1772.7 KB] attempts=1  /Tracey's Books/published books/Emma's Artistic Adventure/Final Pics/Page 17.png
+  [ 1781.2 KB] attempts=1  /Tracey's Books/published books/Emma's Artistic Adventure/Sort thru/Blueberry Whiskers/DALL·E 2024-01-06 01.09.53 - A 3D illustration in the style of a children's book, featuring Blueberry Whiskers, a robot mouse on top of an Amanita Muscaria Mushroom. The mouse has.png
+  [ 3371.0 KB] attempts=1  /robotics/Psi/2651-MSFT-20171004.jpg
+  [ 5464.7 KB] attempts=1  /robotics/steveg/2016 gleason signing/JonCamp/WP_20160825_11_26_44_Pro.jpg
+
+--- auth (8 photos) ---
+  [ 1246.4 KB] attempts=1  /Photos/Kaitlyn's Camera/101_2049.JPG
+  [  973.6 KB] attempts=1  /Photos/Kaitlyn's Camera/101_3312.JPG
+  [  494.6 KB] attempts=1  /robotics/lbe/proxy/sample/pm/Foreground.png
+  [  323.2 KB] attempts=1  /tracey/Camera 07 DEC 2014/IMG_20140511_194356_338.jpg
+  [  246.9 KB] attempts=1  /tracey/Camera 07 DEC 2014/IMG_20140929_180507_981.jpg
+  [ 1758.0 KB] attempts=1  /tracey/added 2019 other dropbox/2014-06-24 (2)/IMG_2450.JPG
+  [ 1834.3 KB] attempts=1  /tracey/added 2019 other dropbox/2014-06-24 (2)/IMG_2451.JPG
+  [ 1786.9 KB] attempts=1  /tracey/added 2019 other dropbox/2014-06-24 (2)/IMG_2452.JPG
+
+--- empty_caption (1 photo) ---
+  [ 4209.4 KB] attempts=1  /photos/pics/2015/2015-03-11 21.29.19.jpg
+
+--- api_error (1 photo) ---
+  [   13.8 KB] attempts=1  /photos/pics/2013/2013-09-28 18.20.55.jpg
+
+--- other (2 photos) ---
+  [  617.2 KB] attempts=1  /Photos/2003/2003-04-19 1569.JPG
+  [  644.0 KB] attempts=1  /Photos/2003/2003-04-19 2124.JPG
