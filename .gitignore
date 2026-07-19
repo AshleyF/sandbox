@@ -3,3 +3,6 @@ gtd/.env
 .env
 __pycache__/
 *.pyc
+
+# .NET build intermediates in any subproject
+**/obj/

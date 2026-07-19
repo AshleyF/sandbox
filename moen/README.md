@@ -8,6 +8,38 @@ for real-time shower control (the same protocol the Moen app uses).
 ## Setup
 
 ```
+<<<<<<< HEAD
+cd moen
+pip install -r requirements.txt
+```
+
+Create a local credentials file from the included example, then edit `.env`
+and replace both placeholder values with your Moen account credentials:
+
+```bash
+cp example.env .env
+```
+
+The `.env` file is ignored by Git and must not be committed. Load it into your
+current shell before running the controller:
+
+```bash
+set -a
+source .env
+set +a
+```
+
+PowerShell:
+
+```powershell
+$env:MOEN_EMAIL = "you@example.com"
+$env:MOEN_PASSWORD = "your-password"
+```
+
+The controller reads `MOEN_EMAIL` and `MOEN_PASSWORD` from the environment; it
+does not load `.env` automatically.
+
+=======
 cd moen-shower-control
 pip install -r requirements.txt
 ```
@@ -18,6 +50,7 @@ Set environment variables (persisted across sessions):
 [Environment]::SetEnvironmentVariable("MOEN_PASSWORD", "yourpassword", "User")
 ```
 
+>>>>>>> c308f09b8abd61b6de60d17dac96b66a56193bdb
 ## Commands
 
 | Command | Description |
@@ -64,6 +97,10 @@ Protocol discovered by sniffing the Pusher channel:
 ## Caveats
 
 - **Unofficial, reverse-engineered** — could break if Moen changes their protocol
+<<<<<<< HEAD
+- Credentials are read from environment variables; keep your local `.env` private
+=======
 - Credentials stored in environment variables (not plaintext files)
+>>>>>>> c308f09b8abd61b6de60d17dac96b66a56193bdb
 - Requires internet (cloud auth + Pusher)
 - Use at your own risk — controlling water temperature remotely has safety implications

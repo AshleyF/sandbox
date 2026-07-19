@@ -1,2 +1,6 @@
 requests>=2.28.0
 pysher>=1.0.0
+<<<<<<< HEAD
+certifi>=2023.5.7
+=======
+>>>>>>> c308f09b8abd61b6de60d17dac96b66a56193bdb
