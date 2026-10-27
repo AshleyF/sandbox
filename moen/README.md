@@ -8,7 +8,6 @@ for real-time shower control (the same protocol the Moen app uses).
 ## Setup
 
 ```
-<<<<<<< HEAD
 cd moen
 pip install -r requirements.txt
 ```
@@ -38,19 +37,6 @@ $env:MOEN_PASSWORD = "your-password"
 
 The controller reads `MOEN_EMAIL` and `MOEN_PASSWORD` from the environment; it
 does not load `.env` automatically.
-
-=======
-cd moen-shower-control
-pip install -r requirements.txt
-```
-
-Set environment variables (persisted across sessions):
-```powershell
-[Environment]::SetEnvironmentVariable("MOEN_EMAIL", "you@example.com", "User")
-[Environment]::SetEnvironmentVariable("MOEN_PASSWORD", "yourpassword", "User")
-```
-
->>>>>>> c308f09b8abd61b6de60d17dac96b66a56193bdb
 ## Commands
 
 | Command | Description |
@@ -62,8 +48,27 @@ Set environment variables (persisted across sessions):
 | `python shower.py off` | Turn shower off |
 | `python shower.py temp 104` | Set target temperature to 104°F |
 | `python shower.py preset 2` | Activate Tracey's preset |
+| `python ramp_down.py` | Start at 100°F, then lower to 90°F in 5-second steps |
 
 If you have multiple showers, pass `--serial YOUR_SERIAL` to any command.
+
+### Temperature ramp test
+
+After loading your credentials, run:
+
+```bash
+python ramp_down.py
+```
+
+This starts the shower at 100°F, waits five seconds, then lowers the target by
+1°F every five seconds until it reaches 90°F. It intentionally leaves the
+shower running at 90°F. Stop it separately with `python shower.py off`.
+
+Preview the complete sequence without contacting the shower:
+
+```bash
+python ramp_down.py --dry-run
+```
 
 ## API Module
 
@@ -97,10 +102,6 @@ Protocol discovered by sniffing the Pusher channel:
 ## Caveats
 
 - **Unofficial, reverse-engineered** — could break if Moen changes their protocol
-<<<<<<< HEAD
 - Credentials are read from environment variables; keep your local `.env` private
-=======
-- Credentials stored in environment variables (not plaintext files)
->>>>>>> c308f09b8abd61b6de60d17dac96b66a56193bdb
 - Requires internet (cloud auth + Pusher)
 - Use at your own risk — controlling water temperature remotely has safety implications

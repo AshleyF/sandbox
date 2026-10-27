@@ -7,15 +7,10 @@ Pusher websocket (client-state-desired) sends actual control commands.
 
 import json
 import logging
-<<<<<<< HEAD
 import os
 import time
 import threading
 import certifi
-=======
-import time
-import threading
->>>>>>> c308f09b8abd61b6de60d17dac96b66a56193bdb
 import requests
 import pysher
 from typing import Optional
@@ -79,14 +74,10 @@ class MoenClient:
         if self._pusher and self._subscribed.is_set():
             return
 
-<<<<<<< HEAD
         # websocket-client uses the interpreter's default CA store, which can
         # be incomplete in standalone Python installations on macOS. Requests
         # already depends on certifi, so use the same trusted CA bundle here.
         os.environ.setdefault("SSL_CERT_FILE", certifi.where())
-
-=======
->>>>>>> c308f09b8abd61b6de60d17dac96b66a56193bdb
         details = self.get_shower_details(serial)
         self._channel_name = f"private-{details['channel']}"
 
@@ -138,6 +129,9 @@ class MoenClient:
             "data": json.dumps(data),
         })
         self._pusher.connection.socket.send(msg)
+        # Allow the websocket worker to flush the frame before callers that
+        # issue a single command immediately disconnect.
+        time.sleep(0.5)
 
     def disconnect(self):
         if self._pusher:
@@ -204,7 +198,3 @@ class MoenClient:
         self._send_control(serial, "shower_set", config)
         time.sleep(0.5)
         self._send_control(serial, "shower_on", {"preset": str(preset_index)})
-<<<<<<< HEAD
-=======
-
->>>>>>> c308f09b8abd61b6de60d17dac96b66a56193bdb
