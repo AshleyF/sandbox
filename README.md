@@ -16,6 +16,7 @@ A grab bag of small personal projects, experiments, and prototypes.
 | [gtd](gtd/) | GTD Flow — Getting Things Done system |
 | [keycast](keycast/) | Keycast |
 | [keyclicker](keyclicker/) | KeyClicker |
+| [layitout](layitout/) | Lay It Out — room plan for furniture, plus a remodel shopping list |
 | [llm](llm/) | LLM experiments |
 | [mancala](mancala/) | Mancala |
 | [Mastermind](Mastermind/) | Mastermind |

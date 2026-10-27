@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lay It Out</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='2' fill='%23e6d3b0' stroke='%23231e19' stroke-width='2'/%3E%3Crect x='8' y='9' width='16' height='14' rx='1' fill='%238d5e45'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=6">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="3" y="3" width="26" height="26" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <rect x="8" y="10" width="16" height="12" rx="1" fill="currentColor"/>
+        </svg>
+        <div>
+          <h1>Lay It Out</h1>
+          <p>A room plan, and the list to remodel it.</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button type="button" id="show-help">How to</button>
+        <button type="button" id="undo" disabled>Undo</button>
+        <button type="button" id="redo" disabled>Redo</button>
+        <div class="modes" role="group" aria-label="How to arrange">
+          <button type="button" data-mode="fit" title="Paths, reach, and the usual spots">Fit</button>
+          <button type="button" data-mode="flow" title="Fit, plus a few feng shui habits">Flow</button>
+        </div>
+        <button type="button" id="suggest" class="primary">Arrange the room</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="viewbar">
+        <div class="views" role="tablist" aria-label="View">
+          <button type="button" data-view="plan" role="tab">Plan</button>
+          <button type="button" data-view="walls" role="tab">Walls</button>
+          <button type="button" data-view="corners" role="tab">Corners</button>
+        </div>
+        <p class="view-hint" id="view-hint"></p>
+        <div class="zoombox" id="zoombox">
+          <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" id="zoom-fit">Fit</button>
+          <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+        </div>
+        <div class="corner-controls" id="corner-controls" hidden>
+          <button type="button" id="turn-left">Turn left</button>
+          <span id="corner-label"></span>
+          <button type="button" id="turn-right">Turn right</button>
+        </div>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="board" aria-label="Room plan"></canvas>
+      </div>
+      <section class="notes" id="notes" aria-live="polite"></section>
+    </main>
+
+    <aside>
+      <details class="help" id="help">
+        <summary>How to use this</summary>
+        <ol>
+          <li>Set the room size under <strong>Room</strong>. <strong>ft</strong> and <strong>cm</strong> only change how the numbers are shown.</li>
+          <li>Under <strong>Openings</strong>, <strong>Add door</strong>, <strong>Add window</strong>, and <strong>Add closet</strong> put a new one on a wall. <strong>Remove</strong> is on that opening. <strong>Wall</strong> picks the side. <strong>From the left</strong> (or <strong>From the top</strong> on a side wall) is how far along the wall it sits. <strong>Hinge</strong> is which end a door swings from.</li>
+          <li>Under <strong>In the room</strong>, add furniture, then drag it on the plan. Scroll to zoom. Double-click, or press R, to turn a piece. The dark edge is the back.</li>
+          <li><strong>Walls</strong> and <strong>Corners</strong> show the same room from inside. <strong>Arrange</strong> places what you’ve added.</li>
+          <li><strong>Save this room</strong> keeps a named copy in this browser. The room you’re editing stays here as you work.</li>
+        </ol>
+      </details>
+      <section>
+        <label class="field">
+          <span>Room</span>
+          <input id="room-name" type="text" maxlength="48" autocomplete="off">
+        </label>
+        <div class="field">
+          <span>Units</span>
+          <div class="modes" role="group" aria-label="Units">
+            <button type="button" data-units="us" aria-pressed="true">ft</button>
+            <button type="button" data-units="metric" aria-pressed="false">cm</button>
+          </div>
+        </div>
+        <div class="dim-grid">
+          <label class="field">Width
+            <span class="dims">
+              <input id="room-w-ft" type="number" min="6" max="60" step="1" inputmode="numeric">
+              <span class="us-only">ft</span>
+              <input id="room-w-in" class="us-only" type="number" min="0" max="11" step="1" inputmode="numeric">
+              <span class="us-only">in</span>
+              <span class="metric-only">cm</span>
+            </span>
+          </label>
+          <label class="field">Length
+            <span class="dims">
+              <input id="room-d-ft" type="number" min="6" max="60" step="1" inputmode="numeric">
+              <span class="us-only">ft</span>
+              <input id="room-d-in" class="us-only" type="number" min="0" max="11" step="1" inputmode="numeric">
+              <span class="us-only">in</span>
+              <span class="metric-only">cm</span>
+            </span>
+          </label>
+          <label class="field">Ceiling
+            <span class="dims">
+              <input id="room-h-ft" type="number" min="7" max="20" step="1" inputmode="numeric">
+              <span class="us-only">ft</span>
+              <input id="room-h-in" class="us-only" type="number" min="0" max="11" step="1" inputmode="numeric">
+              <span class="us-only">in</span>
+              <span class="metric-only">cm</span>
+            </span>
+          </label>
+        </div>
+        <p class="fine" id="sqft"></p>
+        <div class="field">
+          <span>Project</span>
+          <div class="modes" role="group" aria-label="Project">
+            <button type="button" data-project="furnish" aria-pressed="true">Furnish</button>
+            <button type="button" data-project="remodel" aria-pressed="false">Remodel</button>
+          </div>
+        </div>
+        <details class="wall-names">
+          <summary>Name the walls</summary>
+          <p class="fine">North is the top of the plan. Rename a wall if “window wall” is easier to remember than a compass point.</p>
+          <div class="dim-grid">
+            <label class="field">Top <input id="label-n" type="text" maxlength="24"></label>
+            <label class="field">Right <input id="label-e" type="text" maxlength="24"></label>
+            <label class="field">Bottom <input id="label-s" type="text" maxlength="24"></label>
+            <label class="field">Left <input id="label-w" type="text" maxlength="24"></label>
+          </div>
+        </details>
+      </section>
+
+      <section>
+        <h2>Saved rooms</h2>
+        <p class="fine">The room you’re working on stays in this browser. A saved copy is one you can open again.</p>
+        <button type="button" id="save-room">Save this room</button>
+        <ul id="saved-rooms"></ul>
+      </section>
+
+      <section>
+        <h2>Openings</h2>
+        <div id="openings"></div>
+        <div class="row">
+          <button type="button" id="add-door">Add door</button>
+          <button type="button" id="add-window">Add window</button>
+          <button type="button" id="add-closet">Add closet</button>
+        </div>
+        <p class="fine">Each opening can be moved or removed. A room can have more than one door.</p>
+      </section>
+
+      <section id="finishes" hidden>
+        <h2>Finishes</h2>
+        <label class="field">Floor
+          <select id="floor-finish">
+            <option value="keep">Leave it</option>
+            <option value="tile">Tile</option>
+            <option value="vinyl">Vinyl plank</option>
+          </select>
+        </label>
+        <label class="field">Tub walls
+          <select id="wet-walls">
+            <option value="none">Leave them</option>
+            <option value="tile">Tile</option>
+            <option value="kit">Surround kit</option>
+          </select>
+        </label>
+        <label class="field" id="tile-height-field">Tile height
+          <select id="tile-height"></select>
+        </label>
+      </section>
+
+      <section id="materials" hidden>
+        <h2>To buy</h2>
+        <p class="fine" id="materials-note"></p>
+        <ul id="materials-list"></ul>
+        <p class="materials-total" id="materials-total"></p>
+      </section>
+
+      <section>
+        <h2>In the room</h2>
+        <div class="add-row">
+          <select id="add-type" aria-label="What to add"></select>
+          <button type="button" id="add-btn">Add</button>
+        </div>
+        <ul id="pieces"></ul>
+        <div class="row">
+          <button type="button" id="load-sample">Sample bedroom</button>
+          <button type="button" id="load-bath">Sample bath</button>
+          <button type="button" id="clear-pieces">Clear the room</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Selected</h2>
+        <div id="inspector"></div>
+      </section>
+    </aside>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
