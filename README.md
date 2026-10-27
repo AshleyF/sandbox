@@ -11,6 +11,7 @@ A grab bag of small personal projects, experiments, and prototypes.
 | [dropbox-captioner](dropbox-captioner/) | Dropbox photo captioner + embedder + LLM tagger |
 | [elmishvim](elmishvim/) | Experiments in Vim emulation |
 | [fable](fable/) | Fable |
+| [fielddraft](fielddraft/) | Field Draft — a builder’s plan sheet with pitch, stairs, and drainage slope |
 | [fallout](fallout/) | Fallout |
 | [future](future/) | Future |
 | [gtd](gtd/) | GTD Flow — Getting Things Done system |
