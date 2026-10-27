@@ -1283,9 +1283,11 @@ function drawPlan() {
 
   ctx.save();
   ctx.fillStyle = "rgba(184, 67, 47, 0.09)";
-  const swing = swingRect(room);
-  const [sx, sy] = R(cam, swing.x, swing.y);
-  ctx.fillRect(sx, sy, swing.w * cam.scale, swing.d * cam.scale);
+  for (const door of room.doors) {
+    const swing = swingRectFor(room, door);
+    const [sx, sy] = R(cam, swing.x, swing.y);
+    ctx.fillRect(sx, sy, swing.w * cam.scale, swing.d * cam.scale);
+  }
   for (const zone of closetZones(room)) {
     ctx.fillStyle = "rgba(70, 90, 110, 0.08)";
     const [zx, zy] = R(cam, zone.x, zone.y);

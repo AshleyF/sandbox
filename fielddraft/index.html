@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Field Draft</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' fill='%230e3358' stroke='%23e8f4ff' stroke-width='2'/%3E%3Cpath d='M6 22 L16 8 L26 22' fill='none' stroke='%23e8f4ff' stroke-width='1.6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="3" y="3" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M7 23 L16 8 L25 23" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        </svg>
+        <div>
+          <h1>Field Draft</h1>
+          <p>A plan sheet for a builder. Pitch, stairs, and slope.</p>
+        </div>
+      </div>
+    </header>
+
+    <aside>
+      <p class="fine">The sheet stays in this browser. It drafts the plan and does the arithmetic. It does not know your state or county code.</p>
+
+      <section>
+        <h2>Sheet</h2>
+        <label class="field">Project
+          <input id="project" type="text" maxlength="48" autocomplete="off">
+        </label>
+        <label class="field">Drawn by
+          <input id="drawn-by" type="text" maxlength="32" autocomplete="off">
+        </label>
+      </section>
+
+      <section>
+        <h2>Building</h2>
+        <div class="dim-grid">
+          <label class="field">Width
+            <span class="dims">
+              <input id="w-ft" type="number" min="6" max="80" step="1" inputmode="numeric"> ft
+              <input id="w-in" type="number" min="0" max="11" step="1" inputmode="numeric"> in
+            </span>
+          </label>
+          <label class="field">Length
+            <span class="dims">
+              <input id="d-ft" type="number" min="6" max="80" step="1" inputmode="numeric"> ft
+              <input id="d-in" type="number" min="0" max="11" step="1" inputmode="numeric"> in
+            </span>
+          </label>
+          <label class="field">Wall height
+            <span class="dims">
+              <input id="h-ft" type="number" min="7" max="30" step="1" inputmode="numeric"> ft
+              <input id="h-in" type="number" min="0" max="11" step="1" inputmode="numeric"> in
+            </span>
+          </label>
+          <label class="field">Roof pitch
+            <span class="dims">
+              <input id="pitch" type="number" min="0" max="24" step="0.5" inputmode="decimal"> : 12
+            </span>
+          </label>
+        </div>
+        <label class="field">Ridge
+          <select id="span">
+            <option value="width">Spans the width</option>
+            <option value="depth">Spans the length</option>
+          </select>
+        </label>
+      </section>
+
+      <section>
+        <h2>Door</h2>
+        <label class="field">Wall
+          <select id="door-wall">
+            <option value="n">North</option>
+            <option value="e">East</option>
+            <option value="s">South</option>
+            <option value="w">West</option>
+          </select>
+        </label>
+        <div class="dim-grid">
+          <label class="field">From the left or top
+            <span class="dims">
+              <input id="door-ft" type="number" min="0" max="80" step="1" inputmode="numeric"> ft
+              <input id="door-in" type="number" min="0" max="11" step="1" inputmode="numeric"> in
+            </span>
+          </label>
+          <label class="field">Width
+            <span class="dims">
+              <input id="door-w-ft" type="number" min="2" max="12" step="1" inputmode="numeric"> ft
+              <input id="door-w-in" type="number" min="0" max="11" step="1" inputmode="numeric"> in
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Window</h2>
+        <label class="field">Wall
+          <select id="win-wall">
+            <option value="n">North</option>
+            <option value="e">East</option>
+            <option value="s">South</option>
+            <option value="w">West</option>
+          </select>
+        </label>
+        <div class="dim-grid">
+          <label class="field">From the left or top
+            <span class="dims">
+              <input id="win-ft" type="number" min="0" max="80" step="1" inputmode="numeric"> ft
+              <input id="win-in" type="number" min="0" max="11" step="1" inputmode="numeric"> in
+            </span>
+          </label>
+          <label class="field">Width
+            <span class="dims">
+              <input id="win-w-ft" type="number" min="1" max="16" step="1" inputmode="numeric"> ft
+              <input id="win-w-in" type="number" min="0" max="11" step="1" inputmode="numeric"> in
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Stairs</h2>
+        <div class="dim-grid">
+          <label class="field">Floor to floor
+            <span class="dims">
+              <input id="rise-ft" type="number" min="1" max="20" step="1" inputmode="numeric"> ft
+              <input id="rise-in" type="number" min="0" max="11" step="1" inputmode="numeric"> in
+            </span>
+          </label>
+          <label class="field">Tread
+            <span class="dims">
+              <input id="tread" type="number" min="6" max="18" step="0.25" inputmode="decimal"> in
+            </span>
+          </label>
+        </div>
+        <p id="stair-out" class="result"></p>
+        <p id="stair-flag" class="flag"></p>
+      </section>
+
+      <section>
+        <h2>Drainage</h2>
+        <div class="dim-grid">
+          <label class="field">Run
+            <span class="dims">
+              <input id="drain-ft" type="number" min="1" max="200" step="1" inputmode="numeric"> ft
+            </span>
+          </label>
+          <label class="field">Drop
+            <span class="dims">
+              <input id="drain-in" type="number" min="0" max="120" step="0.25" inputmode="decimal"> in
+            </span>
+          </label>
+        </div>
+        <p id="drain-out" class="result"></p>
+      </section>
+
+      <section>
+        <h2>Roof</h2>
+        <p id="roof-out" class="result"></p>
+        <p class="fine">A common residential stair habit is a riser of 7 3/4″ or less and a tread of 10″ or more. That check is on this sheet. The adopted code is whatever your building department uses.</p>
+      </section>
+    </aside>
+
+    <main>
+      <canvas id="sheet" aria-label="Plan sheet"></canvas>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
