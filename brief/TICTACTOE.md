@@ -89,6 +89,7 @@ Reading `play` top-down: given a board and position, check if the move is valid.
 
 ### Board Primitives
 
+{% raw %}
 ```
 \ The empty board: 9 zeros
 empty-board {0 0 0 0 0 0 0 0 0}
@@ -125,6 +126,7 @@ won? any [line-won? swap over] winning-lines dip [drop]
 game-over? or or draw? won? 2 dup won? 1 dup
   draw? = 0 length empty-cells
 ```
+{% endraw %}
 
 ### Display
 
@@ -252,6 +254,7 @@ For position 3: placing 2 gives `{1 0 0 2 2 2 1 0 0}`. Row `{3 4 5}` = `{2 2 2}`
 
 All definitions in one block, with sub-definitions properly scoped:
 
+{% raw %}
 ```
 \ ═══════════════════════════════════════════════
 \  Tic Tac Toe in Brief
@@ -324,11 +327,13 @@ negamax if [terminal-score] ..
     2dup over over
   best-score fold [max] first dup
 ```
+{% endraw %}
 
 ## Interaction: Full Game Session
 
 Below is a sample session showing messages sent to the machine and results returned. The outer loop displays the board and reads input.
 
+{% raw %}
 ```
 → init
 ← stack: " . | . | . \n---+---+---\n . | . | . \n---+---+---\n . | . | . "
@@ -362,6 +367,7 @@ Below is a sample session showing messages sent to the machine and results retur
 
   (Game drawn — all cells filled, no winner.)
 ```
+{% endraw %}
 
 With perfect play from both sides, tic-tac-toe is always a draw. The negamax AI guarantees this.
 
