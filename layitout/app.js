@@ -70,11 +70,19 @@ const state = {
   units: "us",
   libraryId: null,
   library: [],
+  selectedOpeningId: null,
 };
 
 const images = new Map();
+const expandedOpenings = new Set();
+const ROOM_INPUTS = new Set([
+  "room-name", "room-w-ft", "room-w-in", "room-d-ft", "room-d-in",
+  "room-h-ft", "room-h-in", "label-n", "label-e", "label-s", "label-w",
+]);
 let hatch = null;
 let focusSnap = null;
+let roomEditSnap = null;
+let savedTimer = 0;
 let drag = null;
 
 function uid() {
@@ -293,6 +301,19 @@ function allOpenings(room) {
   return [...(room.doors || []), ...(room.windows || []), ...(room.closets || [])];
 }
 
+function findOpening(id) {
+  if (!id || !state.room) return null;
+  for (const [kind, list] of [["door", state.room.doors], ["window", state.room.windows], ["closet", state.room.closets]]) {
+    const op = (list || []).find((item) => item.id === id);
+    if (op) return { kind, op };
+  }
+  return null;
+}
+
+function snapStep() {
+  return metric() ? (state.zoom >= 2 ? cmToIn(1) : cmToIn(5)) : (state.zoom >= 2 ? 1 : 6);
+}
+
 function clampPiece(room, piece) {
   const fp = footprint(piece, piece.rot || 0);
   const maxX = Math.max(0, room.w - fp.w);
@@ -458,7 +479,17 @@ function applySnapshot(snap) {
   normalize(state.room, state.pieces);
 }
 
+function flushRoomEdit() {
+  const active = document.activeElement;
+  if (!roomEditSnap || !active || !ROOM_INPUTS.has(active.id)) return;
+  readRoomFromInputs();
+  if (!active.dataset.pushed) commit(roomEditSnap);
+  roomEditSnap = null;
+  active.dataset.pushed = "";
+}
+
 function undo() {
+  flushRoomEdit();
   if (!state.past.length) return;
   state.future.push(snapshot());
   applySnapshot(state.past.pop());
@@ -467,6 +498,7 @@ function undo() {
 }
 
 function redo() {
+  flushRoomEdit();
   if (!state.future.length) return;
   state.past.push(snapshot());
   applySnapshot(state.future.pop());
@@ -545,6 +577,7 @@ function roomRecord(id) {
 function saveRoomToLibrary() {
   const id = state.libraryId || uid();
   const record = roomRecord(id);
+  let saved = false;
   const store = (entry) => {
     const next = [entry, ...state.library.filter((r) => r.id !== entry.id)];
     writeLibrary(next);
@@ -554,11 +587,13 @@ function saveRoomToLibrary() {
   try {
     store(record);
     state.saveError = "";
+    saved = true;
   } catch {
     const slim = { ...record, pieces: record.pieces.map((p) => ({ ...p, photo: null })) };
     try {
       store(slim);
       state.saveError = "Saved the room. The photos didn’t fit in this browser, so this copy is without them.";
+      saved = true;
     } catch {
       state.saveError = "This browser ran out of room to keep another copy.";
     }
@@ -566,6 +601,16 @@ function saveRoomToLibrary() {
   save();
   renderLibrary();
   renderNotes();
+  if (saved) showSaved();
+}
+
+function showSaved() {
+  const button = document.getElementById("save-room");
+  button.textContent = "Saved";
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => {
+    if (button.textContent === "Saved") renderLibrary();
+  }, 1400);
 }
 
 function openSavedRoom(id) {
@@ -633,8 +678,8 @@ function renderLibrary() {
     open.addEventListener("click", () => openSavedRoom(record.id));
     const remove = document.createElement("button");
     remove.type = "button";
-    remove.textContent = "Remove";
-    remove.setAttribute("aria-label", `Remove ${record.name || "Room"}`);
+    remove.textContent = "Delete copy";
+    remove.setAttribute("aria-label", `Delete copy of ${record.name || "Room"}`);
     remove.addEventListener("click", () => deleteSavedRoom(record.id));
     li.append(open, remove);
     ul.append(li);
@@ -654,6 +699,8 @@ function applyDocument(doc) {
   state.pristine = !!doc.pristine;
   normalize(state.room, state.pieces);
   if (state.selectedId && !state.pieces.some((p) => p.id === state.selectedId)) state.selectedId = null;
+  state.selectedOpeningId = null;
+  expandedOpenings.clear();
 }
 
 /* ---------- placement ---------- */
@@ -994,120 +1041,35 @@ function overlapsOf(pieces) {
   return hits;
 }
 
-function collectNotes() {
+function primaryNote() {
   const room = state.room;
   const pieces = state.pieces;
-  const notes = [];
-  if (state.pristine) {
-    notes.push({
-      tone: "info",
-      text: room.project === "remodel"
-        ? `This is a sample bath, ${fmtRoom(room.w)} by ${fmtRoom(room.d)}. The list on the side is what the tile and the fixtures add up to. Change the sizes to your room.`
-        : `This is a sample front bedroom, ${fmtRoom(room.w)} by ${fmtRoom(room.d)}. Change the measurements to your room, then drag anything that isn’t yours.`,
-    });
-  }
-  if (!pieces.length) {
-    notes.push({
-      tone: "info",
-      text: room.project === "remodel"
-        ? "Add a tub, a toilet, or a vanity, or load the sample bath."
-        : "Add what you actually own, or load the sample bedroom and start replacing it.",
-    });
-  }
-  for (const [a, b] of overlapsOf(pieces)) {
-    notes.push({ tone: "bad", text: `${a.name} overlaps ${b.name}.` });
-  }
-  for (const p of pieces) {
-    const b = bounds(p);
-    if (b.w > room.w + 0.5 || b.d > room.d + 0.5) {
-      notes.push({ tone: "bad", text: `${p.name} is bigger than the room on one side.` });
-    }
-    const widest = room.doors.reduce((m, d) => Math.max(m, d.width), 0);
-    if (widest && p.type !== "bed" && p.type !== "sofa" && p.type !== "rug" && Math.min(p.w, p.d) > widest) {
-      notes.push({ tone: "warn", text: `${p.name} is wider than the doorway on both sides, so it may not come through in one piece.` });
-    }
+  if (state.saveError) return { tone: "warn", text: state.saveError };
+  const overlaps = overlapsOf(pieces);
+  if (overlaps.length) {
+    const [a, b] = overlaps[0];
+    return { tone: "bad", text: `${a.name} overlaps ${b.name}.` };
   }
   const blockers = pieces.filter((p) => p.type !== "rug" && hitsZones(bounds(p), room, p.type).swing);
   if (room.doors.length && blockers.length) {
-    notes.push({ tone: "bad", text: `${blockers.map((p) => p.name).join(" and ")} ${blockers.length > 1 ? "are" : "is"} in the door swing.` });
-  } else if (room.doors.length && pieces.length) {
-    notes.push({ tone: "good", text: room.doors.length > 1 ? "The doors can swing open." : "The door can swing open." });
+    return { tone: "bad", text: `${blockers.map((p) => p.name).join(" and ")} ${blockers.length > 1 ? "are" : "is"} in the door swing.` };
   }
-  const pathBlock = pieces.filter((p) => {
-    if (p.type === "rug") return false;
-    const zones = hitsZones(bounds(p), room, p.type);
-    return zones.path && !zones.swing;
-  });
-  if (pathBlock.length) {
-    notes.push({ tone: "warn", text: `${pathBlock.map((p) => p.name).join(" and ")} sit in the path in from the door.` });
-  }
-  for (const closet of room.closets) {
-    const zone = zoneRect(room, closet, closet.kind === "sliding" ? 18 : closet.width);
-    const who = pieces.filter((p) => p.type !== "rug" && overlapArea(bounds(p), zone) > 0);
-    if (who.length) notes.push({ tone: "warn", text: `${who.map((p) => p.name).join(" and ")} block the closet.` });
-  }
-
   for (const bed of pieces.filter((p) => p.type === "bed")) {
     const wall = wallFromRot(bed.rot);
-    const box = bounds(bed);
-    const near = distanceToWall(box, wall, room) < 8;
-    if (!near) {
-      notes.push({ tone: "warn", text: `${bed.name} isn’t against a wall. The dark edge is the headboard — turn it until that edge meets one.` });
-    } else if (state.mode === "flow") {
-      const door = entryDoor(room);
-      if (door) {
-        const doorW = door.wall;
-        if (wall === doorW) notes.push({ tone: "warn", text: `${bed.name} is on the same wall as the door, so you can’t see the door from the pillows.` });
-        else if (wall === OPP[doorW] && spanOverlap(box, door)) notes.push({ tone: "warn", text: `${bed.name} lines up with the door. That’s the spot feng shui books call the coffin position.` });
-        else notes.push({ tone: "good", text: `From ${bed.name} you can see the door, and you aren’t aimed straight at it.` });
+    if (distanceToWall(bounds(bed), wall, room) >= 8) {
+      return { tone: "warn", text: `${bed.name} isn’t against a wall. The dark edge is the headboard — turn it until that edge meets one.` };
+    }
+  }
+  const widest = room.doors.reduce((m, d) => Math.max(m, d.width), 0);
+  if (widest) {
+    for (const p of pieces) {
+      if (p.type === "bed" || p.type === "sofa" || p.type === "rug") continue;
+      if (Math.min(p.w, p.d) > widest) {
+        return { tone: "warn", text: `${p.name} is wider than the doorway on both sides, so it may not come through in one piece.` };
       }
-      if (windowOn(room, box, wall)) notes.push({ tone: "warn", text: `The headboard of ${bed.name} is under a window. A solid wall behind it usually feels calmer.` });
-    } else if (windowOn(room, box, wall)) {
-      notes.push({ tone: "info", text: `${bed.name} sits under a window.` });
-    }
-    const stands = pieces.filter((p) => p.type === "nightstand");
-    const beside = stands.filter((ns) => gapBetween(bounds(ns), box) < 8 && overlapArea(bounds(ns), box) === 0);
-    if (stands.length >= 2 && beside.length >= 2) notes.push({ tone: "good", text: "Both sides of the bed have a nightstand." });
-    else if (stands.length && !beside.length) notes.push({ tone: "info", text: "The nightstand isn’t beside the bed yet." });
-  }
-
-  for (const desk of pieces.filter((p) => p.type === "desk")) {
-    const wall = wallFromRot(desk.rot);
-    const door = entryDoor(room);
-    const doorW = door && door.wall;
-    if (doorW && state.mode === "flow") {
-      if (wall === OPP[doorW]) notes.push({ tone: "warn", text: "The desk faces the wall opposite the door, which puts the door at your back." });
-      else if (wall !== doorW) notes.push({ tone: "good", text: "The desk is on a side wall, so the door isn’t directly behind you." });
-    }
-    const chair = pieces.find((p) => p.type === "chair");
-    if (chair) {
-      const gap = gapBetween(bounds(chair), bounds(desk));
-      if (gap > 30) notes.push({ tone: "info", text: "The desk chair is a ways from the desk." });
     }
   }
-
-  if (pieces.length) {
-    const cover = pieces.filter((p) => p.type !== "rug").reduce((sum, p) => sum + p.w * p.d, 0);
-    const pct = Math.round((cover / (room.w * room.d)) * 100);
-    const tone = pct > 60 ? "warn" : "info";
-    const extra = pct > 60 ? " That’s a full room — a clear path will matter more than one more piece." : "";
-    const word = room.project === "remodel" ? "Fixtures cover" : "Furniture covers";
-    notes.push({ tone, text: `${word} ${pct}% of the floor.${extra}` });
-  }
-
-  if (state.saveError) notes.push({ tone: "warn", text: state.saveError });
-
-  if (room.project !== "remodel") {
-    const disclaimer = state.mode === "flow"
-      ? "Flow uses a few widely repeated feng shui habits: see the door from the bed, keep a solid wall behind the headboard, put the desk so the door isn’t at your back, and leave the doorway clear. It’s a layout aid, not a reading."
-      : "Fit keeps the door usable, puts the bed on a wall, and tries to leave room to actually use each piece.";
-    notes.push({ tone: "info", text: disclaimer });
-  }
-
-  const rank = { bad: 0, warn: 1, good: 2, info: 3 };
-  const body = notes.filter((n) => n.tone !== "info").sort((a, b) => rank[a.tone] - rank[b.tone]).slice(0, 7);
-  const info = notes.filter((n) => n.tone === "info");
-  return body.concat(info.slice(0, 2));
+  return null;
 }
 
 /* ---------- drawing ---------- */
@@ -1308,6 +1270,7 @@ function drawPlan() {
   drawWallsStroke(cam);
   drawOutsideOpenings(cam);
   drawPlanLabels(cam);
+  drawOpeningSelection(cam);
   if (state.selectedId && state.view === "plan") drawHandle(cam);
 }
 
@@ -1552,6 +1515,7 @@ function drawOutsideOpenings(cam) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   room.doors.forEach((door, i) => labelOpening(cam, door, room.doors.length > 1 ? `door ${i + 1}` : "door"));
+  room.windows.forEach((win, i) => labelOpening(cam, win, room.windows.length > 1 ? `window ${i + 1}` : "window"));
   for (const closet of room.closets) labelOpening(cam, closet, closet.kind === "sliding" ? "closet" : "closet door");
   ctx.restore();
 }
@@ -1603,8 +1567,8 @@ function drawPlanLabels(cam) {
     const count = Math.floor((room.w - 2) / step);
     for (let i = 1; i <= count; i++) {
       const [px, py] = R(cam, i * step, 0);
-      if (Math.abs(px - midX) < 54) continue;
-      ctx.fillText(`${i} m`, px, py - 10);
+      if (Math.abs(px - midX) < 70) continue;
+      ctx.fillText(`${i * 100} cm`, px, py - 10);
     }
   } else {
     const every = cam.scale * 12 >= 22 ? 12 : 24;
@@ -1614,6 +1578,18 @@ function drawPlanLabels(cam) {
       ctx.fillText(fmt(x), px, py - 10);
     }
   }
+  ctx.restore();
+}
+
+function drawOpeningSelection(cam) {
+  const found = findOpening(state.selectedOpeningId);
+  if (!found) return;
+  const rect = zoneRect(state.room, found.op, 6);
+  const [x, y] = R(cam, rect.x, rect.y);
+  ctx.save();
+  ctx.strokeStyle = "#b8432f";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, rect.w * cam.scale, rect.d * cam.scale);
   ctx.restore();
 }
 
@@ -2070,6 +2046,34 @@ function hitPiece(mx, my) {
   return null;
 }
 
+function pointAlongWall(wall, pt) {
+  return wall === "n" || wall === "s" ? pt.x : pt.y;
+}
+
+function hitOpening(mx, my) {
+  if (state.view !== "plan" || !state.room) return null;
+  const pt = toRoom(mx, my, camera());
+  const pad = 14;
+  let best = null;
+  let bestDist = Infinity;
+  for (const op of allOpenings(state.room)) {
+    const along = pointAlongWall(op.wall, pt);
+    if (along < op.offset - pad || along > op.offset + op.width + pad) continue;
+    let cross;
+    if (op.wall === "n") cross = pt.y;
+    else if (op.wall === "s") cross = state.room.d - pt.y;
+    else if (op.wall === "w") cross = pt.x;
+    else cross = state.room.w - pt.x;
+    if (cross < -pad || cross > pad) continue;
+    const dist = Math.abs(cross);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = op;
+    }
+  }
+  return best;
+}
+
 function onPointerDown(e) {
   if (state.view !== "plan" && state.view !== "walls") return;
   const { mx, my } = eventPoint(e);
@@ -2081,6 +2085,29 @@ function onPointerDown(e) {
       rotatePiece(piece);
       commit(before);
       sync();
+      return;
+    }
+  }
+  if (state.view === "plan") {
+    const opening = hitOpening(mx, my);
+    if (opening) {
+      canvas.setPointerCapture(e.pointerId);
+      const before = snapshot();
+      const roomPt = toRoom(mx, my, camera());
+      drag = {
+        kind: "opening",
+        id: opening.id,
+        grab: pointAlongWall(opening.wall, roomPt) - opening.offset,
+        before,
+      };
+      state.selectedOpeningId = opening.id;
+      state.selectedId = null;
+      expandedOpenings.add(opening.id);
+      canvas.style.cursor = "grabbing";
+      renderOpenings();
+      renderPieceList();
+      renderInspector();
+      draw();
       return;
     }
   }
@@ -2100,6 +2127,7 @@ function onPointerDown(e) {
     return;
   }
   state.selectedId = piece.id;
+  state.selectedOpeningId = null;
   const cam = camera();
   const roomPt = toRoom(mx, my, cam);
   drag = { kind: "piece", id: piece.id, ox: roomPt.x - piece.x, oy: roomPt.y - piece.y, before };
@@ -2118,6 +2146,19 @@ function onPointerMove(e) {
     draw();
     return;
   }
+  if (drag.kind === "opening") {
+    const found = findOpening(drag.id);
+    if (!found) return;
+    const roomPt = toRoom(mx, my, camera());
+    const g = snapStep();
+    const along = pointAlongWall(found.op.wall, roomPt) - drag.grab;
+    found.op.offset = Math.round(along / g) * g;
+    normalize(state.room, state.pieces);
+    const toggle = document.querySelector(`.opening[data-id="${found.op.id}"] .opening-toggle`);
+    if (toggle) toggle.textContent = openingLine(found.kind, found.op);
+    draw();
+    return;
+  }
   const piece = state.pieces.find((p) => p.id === drag.id);
   if (!piece) return;
   const cam = camera();
@@ -2128,7 +2169,7 @@ function onPointerMove(e) {
 
 function stick(piece, rawX, rawY) {
   const room = state.room;
-  const g = metric() ? (state.zoom >= 2 ? cmToIn(1) : cmToIn(5)) : (state.zoom >= 2 ? 1 : 6);
+  const g = snapStep();
   let x = Math.round(rawX / g) * g;
   let y = Math.round(rawY / g) * g;
   const fp = footprint(piece, piece.rot);
@@ -2168,8 +2209,10 @@ function onPointerUp() {
     return;
   }
   commit(before);
+  if (kind === "opening") renderOpenings();
   renderNotes();
   renderInspector();
+  if (kind === "opening") draw();
 }
 
 function rotatePiece(piece) {
@@ -2277,12 +2320,12 @@ function selectedClearance(piece) {
 function renderNotes() {
   const root = document.getElementById("notes");
   root.replaceChildren();
-  for (const note of collectNotes()) {
-    const p = document.createElement("p");
-    p.className = `note ${note.tone}`;
-    p.textContent = note.text;
-    root.appendChild(p);
-  }
+  const note = primaryNote();
+  if (!note) return;
+  const p = document.createElement("p");
+  p.className = `note ${note.tone}`;
+  p.textContent = note.text;
+  root.appendChild(p);
 }
 
 function updateHistoryButtons() {
@@ -2345,9 +2388,30 @@ function syncRoomInputs() {
   updateSqft();
 }
 
+function hingeShort(wall, hinge) {
+  const end = hinge === "end";
+  if (wall === "e" || wall === "w") return end ? "hinges bottom" : "hinges top";
+  return end ? "hinges right" : "hinges left";
+}
+
+function openingTitle(kind, op) {
+  const list = kind === "door" ? state.room.doors : kind === "window" ? state.room.windows : state.room.closets;
+  const index = Math.max(0, list.indexOf(op));
+  const noun = kind === "door" ? "Door" : kind === "window" ? "Window" : "Closet";
+  return list.length > 1 ? `${noun} ${index + 1}` : noun;
+}
+
+function openingLine(kind, op) {
+  const from = op.wall === "e" || op.wall === "w" ? "from the top" : "from the left";
+  const parts = [openingTitle(kind, op), wallName(state.room, op.wall), `${fmt(op.offset)} ${from}`, fmt(op.width)];
+  if (kind === "door") parts.push(hingeShort(op.wall, op.hinge));
+  return parts.join(" · ");
+}
+
 function renderOpenings() {
   const root = document.getElementById("openings");
   const room = state.room;
+  if (state.selectedOpeningId && !findOpening(state.selectedOpeningId)) state.selectedOpeningId = null;
   root.replaceChildren();
   if (!room.doors.length && !room.windows.length && !room.closets.length) {
     const empty = document.createElement("p");
@@ -2355,9 +2419,9 @@ function renderOpenings() {
     empty.textContent = "Nothing on the walls yet.";
     root.append(empty);
   }
-  room.doors.forEach((door, i) => root.appendChild(openingRow("door", room.doors.length > 1 ? `Door ${i + 1}` : "Door", door)));
-  room.windows.forEach((win, i) => root.appendChild(openingRow("window", room.windows.length > 1 ? `Window ${i + 1}` : "Window", win)));
-  room.closets.forEach((closet, i) => root.appendChild(openingRow("closet", room.closets.length > 1 ? `Closet ${i + 1}` : "Closet", closet)));
+  for (const door of room.doors) root.appendChild(openingRow("door", door));
+  for (const win of room.windows) root.appendChild(openingRow("window", win));
+  for (const closet of room.closets) root.appendChild(openingRow("closet", closet));
 }
 
 function lengthInput(field, inches, minIn, maxIn) {
@@ -2380,19 +2444,35 @@ function hingeNames(wall) {
   return ["Hinges on the left", "Hinges on the right"];
 }
 
-function offsetInputs(inches, wall) {
-  const label = fromLabel(wall);
-  if (metric()) return `${label} ${lengthInput("offset", inches, 0, 720)} cm`;
+function pairInputs(prefix, inches, label) {
+  if (metric()) return `${lengthInput(prefix, inches, 0, 720)} cm`;
   const off = splitInches(inches);
-  return `${label} <input data-field="ft" type="number" min="0" max="60" value="${off.ft}" aria-label="${label}, feet"> ft
-    <input data-field="inch" type="number" min="0" max="11" value="${off.inch}" aria-label="${label}, inches"> in`;
+  return `<input data-field="${prefix}-ft" type="number" min="0" max="60" step="1" value="${off.ft}" aria-label="${label}, feet"> ft
+    <input data-field="${prefix}-in" type="number" min="0" max="11" step="1" value="${off.inch}" aria-label="${label}, inches"> in`;
 }
 
-function openingRow(kind, title, op) {
+function openingRow(kind, op) {
   const row = document.createElement("div");
-  row.className = "opening";
+  const open = expandedOpenings.has(op.id);
+  const title = openingTitle(kind, op);
+  row.className = "opening" + (op.id === state.selectedOpeningId ? " selected" : "");
   row.dataset.kind = kind;
   row.dataset.id = op.id;
+  const head = document.createElement("div");
+  head.className = "opening-head";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "opening-toggle";
+  toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  toggle.textContent = openingLine(kind, op);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.dataset.act = "remove";
+  remove.textContent = "Remove";
+  remove.setAttribute("aria-label", `Remove ${title}`);
+  head.append(toggle, remove);
+  row.append(head);
+  if (!open) return row;
   const wallOpts = WALLS.map((w) => `<option value="${w}" ${op.wall === w ? "selected" : ""}>${wallName(state.room, w)}</option>`).join("");
   let extra = "";
   if (kind === "door") {
@@ -2410,15 +2490,14 @@ function openingRow(kind, title, op) {
       <option value="swing" ${op.kind === "swing" ? "selected" : ""}>Swinging</option>
     </select></label>`;
   }
-  row.innerHTML = `
-    <div class="opening-head">
-      <strong>${title}</strong>
-      <button type="button" data-act="remove" aria-label="Remove ${title}">Remove</button>
-    </div>
+  const edit = document.createElement("div");
+  edit.className = "opening-edit";
+  edit.innerHTML = `
     <label class="dims">Wall <select data-field="wall" aria-label="Wall">${wallOpts}</select></label>
-    <label class="dims">${offsetInputs(op.offset, op.wall)}</label>
-    <label class="dims">Width ${lengthInput("width", op.width, 12, 240)} ${unitWord()}</label>
+    <label class="dims">${fromLabel(op.wall)} ${pairInputs("offset", op.offset, fromLabel(op.wall))}</label>
+    <label class="dims">Width ${pairInputs("width", op.width, "Width")}</label>
     ${extra}`;
+  row.append(edit);
   return row;
 }
 
@@ -2426,6 +2505,17 @@ function readMeasured(el) {
   if (!el) return 0;
   const n = Number(el.value) || 0;
   return el.dataset.unit === "cm" ? cmToIn(n) : n;
+}
+
+function readPair(row, prefix) {
+  if (metric()) {
+    const el = row.querySelector(`[data-field="${prefix}"]`);
+    return el ? readMeasured(el) : null;
+  }
+  const ft = row.querySelector(`[data-field="${prefix}-ft"]`);
+  const inch = row.querySelector(`[data-field="${prefix}-in"]`);
+  if (!ft || !inch) return null;
+  return (Number(ft.value) || 0) * 12 + (Number(inch.value) || 0);
 }
 
 function readOpeningRow(row) {
@@ -2436,18 +2526,18 @@ function readOpeningRow(row) {
   const op = list.find((item) => item.id === id);
   if (!op) return;
   const val = (field) => row.querySelector(`[data-field="${field}"]`);
-  op.wall = val("wall").value;
-  op.offset = metric()
-    ? readMeasured(val("offset"))
-    : (Number(val("ft").value) || 0) * 12 + (Number(val("inch").value) || 0);
-  op.width = readMeasured(val("width")) || op.width;
+  if (val("wall")) op.wall = val("wall").value;
+  const offset = readPair(row, "offset");
+  const width = readPair(row, "width");
+  if (offset != null) op.offset = offset;
+  if (width != null) op.width = width || op.width;
   if (kind === "door" || kind === "closet") {
     const hinge = val("hinge");
     if (hinge) op.hinge = hinge.value;
   }
   if (kind === "window") {
-    op.sill = readMeasured(val("sill"));
-    op.height = readMeasured(val("winh")) || op.height;
+    if (val("sill")) op.sill = readMeasured(val("sill"));
+    if (val("winh")) op.height = readMeasured(val("winh")) || op.height;
   }
   if (kind === "closet" && val("kind")) op.kind = val("kind").value;
 }
@@ -2586,8 +2676,10 @@ function renderMaterials() {
   const remodelState = state.room.remodel;
   document.getElementById("floor-finish").value = remodelState.floor;
   document.getElementById("wet-walls").value = remodelState.wetWalls;
+  const hasTub = state.pieces.some((p) => p.type === "tub");
+  document.getElementById("wet-walls-field").hidden = !hasTub;
   const heightField = document.getElementById("tile-height-field");
-  heightField.hidden = remodelState.wetWalls !== "tile";
+  heightField.hidden = !hasTub || remodelState.wetWalls !== "tile";
   const sel = document.getElementById("tile-height");
   const ceiling = state.room.h;
   const wanted = [60, 72, ceiling].filter((v, i, arr) => v <= ceiling && arr.indexOf(v) === i);
@@ -2644,17 +2736,6 @@ function renderMaterials() {
       detail.textContent = item.detail;
       body.append(detail);
     }
-    const links = document.createElement("span");
-    links.className = "buy-links";
-    for (const [store, label] of [["hd", "Home Depot"], ["lowes", "Lowe's"]]) {
-      const a = document.createElement("a");
-      a.href = storeUrl(store, item.query);
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = label;
-      links.append(a);
-    }
-    body.append(links);
     li.append(check, body);
     ul.append(li);
     if (checked) got += item.price;
@@ -2664,6 +2745,19 @@ function renderMaterials() {
   if (!lines.length) total.textContent = "";
   else if (got > 0) total.textContent = `Still to buy ${money(remain)} · already checked ${money(got)}`;
   else total.textContent = `Planning total ${money(remain)}`;
+  const storeLinks = document.getElementById("store-links");
+  storeLinks.replaceChildren();
+  storeLinks.hidden = !lines.length;
+  if (lines.length) {
+    for (const [store, label] of [["hd", "Home Depot"], ["lowes", "Lowe's"]]) {
+      const a = document.createElement("a");
+      a.href = storeUrl(store, "bathroom remodel");
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = label;
+      storeLinks.append(a);
+    }
+  }
 }
 
 function renderPieceList() {
@@ -2679,6 +2773,7 @@ function renderPieceList() {
   const problems = new Set(overlapsOf(state.pieces).flat().map((p) => p.id));
   for (const piece of state.pieces) {
     const li = document.createElement("li");
+    li.className = "piece-row";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "piece" + (piece.id === state.selectedId ? " selected" : "");
@@ -2704,9 +2799,90 @@ function renderPieceList() {
       dot.className = "warn-dot";
       btn.append(dot);
     }
-    li.append(btn);
+    const actions = document.createElement("span");
+    actions.className = "piece-actions";
+    const turn = document.createElement("button");
+    turn.type = "button";
+    turn.textContent = "Rotate";
+    turn.setAttribute("aria-label", `Rotate ${piece.name}`);
+    turn.addEventListener("click", () => {
+      const before = snapshot();
+      state.selectedId = piece.id;
+      state.selectedOpeningId = null;
+      rotatePiece(piece);
+      commit(before);
+      sync();
+    });
+    const del = document.createElement("button");
+    del.type = "button";
+    del.textContent = "Delete";
+    del.setAttribute("aria-label", `Delete ${piece.name}`);
+    del.addEventListener("click", () => removePiece(piece.id));
+    actions.append(turn, del);
+    li.append(btn, actions);
     ul.append(li);
   }
+}
+
+function pieceDimField(piece, key, label) {
+  const lab = document.createElement("label");
+  lab.className = "field";
+  const wrap = document.createElement("span");
+  wrap.className = "dims";
+  const commitDim = () => {
+    commit(focusSnap);
+    renderPieceList();
+    renderNotes();
+    renderMaterials();
+    renderInspector();
+  };
+  const applyInches = (inches) => {
+    piece[key] = clamp(inches || piece[key], 1, 240);
+    clampPiece(state.room, piece);
+    draw();
+    const clearance = document.getElementById("clearance");
+    if (clearance) clearance.textContent = selectedClearance(piece);
+  };
+  if (metric()) {
+    lab.append(document.createTextNode(`${label} (cm)`));
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "1";
+    input.max = "610";
+    input.step = "1";
+    input.value = String(toCm(piece[key]));
+    input.setAttribute("aria-label", `${label} in centimeters`);
+    input.addEventListener("focus", () => { focusSnap = snapshot(); });
+    input.addEventListener("input", () => applyInches(cmToIn(Number(input.value))));
+    input.addEventListener("change", commitDim);
+    wrap.append(input, document.createTextNode("cm"));
+  } else {
+    lab.append(document.createTextNode(label));
+    const parts = splitInches(piece[key]);
+    const ft = document.createElement("input");
+    const inch = document.createElement("input");
+    for (const input of [ft, inch]) {
+      input.type = "number";
+      input.step = "1";
+    }
+    ft.min = "0";
+    ft.max = "20";
+    inch.min = "0";
+    inch.max = "11";
+    ft.value = String(parts.ft);
+    inch.value = String(parts.inch);
+    ft.setAttribute("aria-label", `${label}, feet`);
+    inch.setAttribute("aria-label", `${label}, inches`);
+    const apply = () => applyInches((Number(ft.value) || 0) * 12 + (Number(inch.value) || 0));
+    for (const input of [ft, inch]) {
+      input.addEventListener("focus", () => { focusSnap = snapshot(); });
+      input.addEventListener("input", apply);
+      input.addEventListener("change", commitDim);
+    }
+    wrap.append(ft, document.createTextNode("ft"), inch, document.createTextNode("in"));
+  }
+  lab.append(wrap);
+  return lab;
 }
 
 function renderInspector() {
@@ -2764,32 +2940,7 @@ function renderInspector() {
   const dims = document.createElement("div");
   dims.className = "inspector-grid";
   for (const [key, label] of [["w", "Width"], ["d", "Depth"], ["h", "Height"]]) {
-    const lab = document.createElement("label");
-    lab.className = "field";
-    lab.append(document.createTextNode(metric() ? `${label} (cm)` : label));
-    const input = document.createElement("input");
-    input.type = "number";
-    input.min = "1";
-    input.max = metric() ? "610" : "240";
-    input.step = "1";
-    input.value = metric() ? toCm(piece[key]) : Math.round(piece[key]);
-    input.addEventListener("focus", () => { focusSnap = snapshot(); });
-    input.addEventListener("input", () => {
-      const raw = Number(input.value);
-      const inches = metric() ? cmToIn(raw) : raw;
-      piece[key] = clamp(inches || piece[key], 1, 240);
-      clampPiece(state.room, piece);
-      draw();
-    });
-    input.addEventListener("change", () => { commit(focusSnap); renderPieceList(); renderNotes(); renderMaterials(); renderInspector(); });
-    lab.append(input);
-    if (!metric()) {
-      const hint = document.createElement("span");
-      hint.className = "fine";
-      hint.textContent = fmt(piece[key]);
-      lab.append(hint);
-    }
-    dims.append(lab);
+    dims.append(pieceDimField(piece, key, label));
   }
 
   const clearance = document.createElement("p");
@@ -2872,6 +3023,57 @@ function uniqueName(base, ignoreId) {
   return `${base} ${i}`;
 }
 
+function spansOverlap(a0, a1, b0, b1) {
+  return a0 < b1 - 0.5 && b0 < a1 - 0.5;
+}
+
+function openingSpanFree(op) {
+  const len = wallLen(state.room, op.wall);
+  if (op.width > len + 0.5) return false;
+  if (op.offset < -0.5 || op.offset + op.width > len + 0.5) return false;
+  return !allOpenings(state.room).some((other) => other.wall === op.wall && spansOverlap(op.offset, op.offset + op.width, other.offset, other.offset + other.width));
+}
+
+function openingHitsPiece(op) {
+  const zone = swingRectFor(state.room, op);
+  return state.pieces.some((p) => p.type !== "rug" && overlapArea(bounds(p), zone) > 1);
+}
+
+function placeOpeningOnWall(kind, width) {
+  const g = metric() ? cmToIn(5) : 6;
+  for (const wall of WALLS) {
+    const len = wallLen(state.room, wall);
+    if (width > len) continue;
+    const limit = Math.max(0, len - width);
+    const stops = new Set([0, limit]);
+    for (let t = 0; t <= limit + 0.01; t += g) stops.add(Math.min(limit, t));
+    for (const offset of [...stops].sort((a, b) => a - b)) {
+      const op = { wall, offset, width };
+      if (!openingSpanFree(op)) continue;
+      if (kind === "door" && openingHitsPiece(op)) continue;
+      return { wall, offset };
+    }
+  }
+  return { wall: "n", offset: 0 };
+}
+
+function addOpening(kind, fields) {
+  const before = snapshot();
+  const id = uid();
+  const spot = placeOpeningOnWall(kind, fields.width);
+  const op = { id, ...fields, wall: spot.wall, offset: spot.offset };
+  const list = kind === "door" ? state.room.doors : kind === "window" ? state.room.windows : state.room.closets;
+  list.push(op);
+  state.selectedOpeningId = id;
+  state.selectedId = null;
+  expandedOpenings.add(id);
+  normalize(state.room, state.pieces);
+  commit(before);
+  sync();
+  const row = document.querySelector(`.opening[data-id="${id}"]`);
+  if (row) row.scrollIntoView({ block: "nearest" });
+}
+
 function addPieceFromCatalog(index) {
   const spec = CATALOG[index];
   if (!spec) return;
@@ -2893,6 +3095,7 @@ function addPieceFromCatalog(index) {
   clampPiece(state.room, piece);
   state.pieces.push(piece);
   state.selectedId = piece.id;
+  state.selectedOpeningId = null;
   commit(before);
   sync();
 }
@@ -2959,32 +3162,70 @@ function turn(dir) {
   draw();
 }
 
+function stickToFarWalls(dw, dd) {
+  if (!dw && !dd) return;
+  const old = { w: state.room.w, d: state.room.d };
+  for (const piece of state.pieces) {
+    const box = bounds(piece);
+    const nearWest = distanceToWall(box, "w", old) < 8;
+    const nearNorth = distanceToWall(box, "n", old) < 8;
+    if (dw && !nearWest && distanceToWall(box, "e", old) < 8) piece.x += dw;
+    if (dd && !nearNorth && distanceToWall(box, "s", old) < 8) piece.y += dd;
+  }
+}
+
 function readRoomFromInputs() {
   const room = state.room;
+  const nextW = clamp(quantize(readDim("room-w-ft", "room-w-in")), 72, 720);
+  const nextD = clamp(quantize(readDim("room-d-ft", "room-d-in")), 72, 720);
+  const nextH = clamp(quantize(readDim("room-h-ft", "room-h-in")), 84, 240);
+  const base = roomEditSnap && roomEditSnap.room;
+  if (base) {
+    for (const piece of state.pieces) {
+      const old = roomEditSnap.pieces.find((item) => item.id === piece.id);
+      if (!old) continue;
+      piece.x = old.x;
+      piece.y = old.y;
+    }
+    room.w = base.w;
+    room.d = base.d;
+  }
+  stickToFarWalls(nextW - room.w, nextD - room.d);
   room.name = document.getElementById("room-name").value.trim() || "Room";
-  room.w = readDim("room-w-ft", "room-w-in");
-  room.d = readDim("room-d-ft", "room-d-in");
-  room.h = readDim("room-h-ft", "room-h-in");
+  room.w = nextW;
+  room.d = nextD;
+  room.h = nextH;
   for (const wall of WALLS) room.labels[wall] = document.getElementById(`label-${wall}`).value.trim() || DEFAULT_LABELS[wall];
   normalize(room, state.pieces);
 }
 
 function bindRoomInputs() {
-  const ids = ["room-name", "room-w-ft", "room-w-in", "room-d-ft", "room-d-in", "room-h-ft", "room-h-in", "label-n", "label-e", "label-s", "label-w"];
-  for (const id of ids) {
+  for (const id of ROOM_INPUTS) {
     const el = document.getElementById(id);
-    el.addEventListener("focus", () => { focusSnap = snapshot(); });
+    el.addEventListener("focus", () => {
+      if (!roomEditSnap) roomEditSnap = snapshot();
+    });
     el.addEventListener("input", () => {
+      if (!roomEditSnap) roomEditSnap = snapshot();
       readRoomFromInputs();
+      if (!el.dataset.pushed) {
+        commit(roomEditSnap);
+        el.dataset.pushed = "1";
+      }
       draw();
       updateSqft();
+      renderNotes();
+      const clearance = document.getElementById("clearance");
+      const piece = selected();
+      if (clearance && piece) clearance.textContent = selectedClearance(piece);
     });
     el.addEventListener("change", () => {
+      if (!roomEditSnap) roomEditSnap = snapshot();
       readRoomFromInputs();
-      commit(focusSnap);
-      renderOpenings();
-      renderNotes();
-      draw();
+      if (!el.dataset.pushed) commit(roomEditSnap);
+      roomEditSnap = null;
+      el.dataset.pushed = "";
+      sync();
     });
   }
 }
@@ -2999,6 +3240,7 @@ function paint(live) {
 
 function sync() {
   syncRoomInputs();
+  renderAddOptions();
   renderOpenings();
   renderMaterials();
   renderLibrary();
@@ -3007,17 +3249,43 @@ function sync() {
   paint(false);
 }
 
+function renderAddOptions() {
+  const add = document.getElementById("add-type");
+  const previous = add.value;
+  add.replaceChildren();
+  const remodel = !!(state.room && state.room.project === "remodel");
+  const groups = [];
+  CATALOG.forEach((item, i) => {
+    const bath = item.group === "Bath";
+    const label = bath ? "Bath fixtures" : "Furniture";
+    let group = groups.find((entry) => entry.label === label);
+    if (!group) {
+      group = { label, bath, items: [] };
+      groups.push(group);
+    }
+    group.items.push({ item, i });
+  });
+  groups.sort((a, b) => {
+    if (a.bath === b.bath) return 0;
+    return remodel ? (a.bath ? -1 : 1) : (a.bath ? 1 : -1);
+  });
+  for (const group of groups) {
+    const parent = document.createElement("optgroup");
+    parent.label = group.label;
+    for (const { item, i } of group.items) {
+      const option = document.createElement("option");
+      option.value = String(i);
+      option.textContent = item.name;
+      parent.append(option);
+    }
+    add.append(parent);
+  }
+  if (previous && [...add.options].some((option) => option.value === previous)) add.value = previous;
+}
+
 function boot() {
   const help = document.getElementById("help");
-  const helpKey = "layitout-help-v1";
-  try {
-    if (!localStorage.getItem(helpKey)) help.open = true;
-  } catch { /* storage can be blocked */ }
-  help.addEventListener("toggle", () => {
-    if (!help.open) {
-      try { localStorage.setItem(helpKey, "1"); } catch { /* ignore */ }
-    }
-  });
+  help.open = false;
   document.getElementById("show-help").addEventListener("click", () => {
     help.open = true;
     help.scrollIntoView({ block: "nearest" });
@@ -3027,22 +3295,6 @@ function boot() {
   if (saved && saved.units === "metric") state.units = "metric";
   applyDocument(saved || sampleDocument());
   if (saved && saved.libraryId && state.library.some((r) => r.id === saved.libraryId)) state.libraryId = saved.libraryId;
-  const add = document.getElementById("add-type");
-  let groupName = "";
-  let parent = add;
-  CATALOG.forEach((item, i) => {
-    const g = item.group || "Furniture";
-    if (g !== groupName) {
-      groupName = g;
-      parent = document.createElement("optgroup");
-      parent.label = g;
-      add.append(parent);
-    }
-    const o = document.createElement("option");
-    o.value = String(i);
-    o.textContent = item.name;
-    parent.append(o);
-  });
   bindRoomInputs();
 
   document.getElementById("openings").addEventListener("input", (e) => {
@@ -3054,6 +3306,9 @@ function boot() {
     }
     readOpeningRow(row);
     normalize(state.room, state.pieces);
+    const found = findOpening(row.dataset.id);
+    const toggle = row.querySelector(".opening-toggle");
+    if (found && toggle) toggle.textContent = openingLine(found.kind, found.op);
     draw();
   });
   document.getElementById("openings").addEventListener("change", (e) => {
@@ -3064,25 +3319,48 @@ function boot() {
     commit(focusSnap);
     row.dataset.snapped = "";
     if (e.target.matches("select")) renderOpenings();
+    else {
+      const found = findOpening(row.dataset.id);
+      const toggle = row.querySelector(".opening-toggle");
+      if (found && toggle) toggle.textContent = openingLine(found.kind, found.op);
+    }
     renderNotes();
     draw();
   });
   document.getElementById("openings").addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-act='remove']");
-    if (!btn) return;
-    const row = btn.closest(".opening");
-    const before = snapshot();
-    if (row.dataset.kind === "door") state.room.doors = state.room.doors.filter((d) => d.id !== row.dataset.id);
-    if (row.dataset.kind === "window") state.room.windows = state.room.windows.filter((w) => w.id !== row.dataset.id);
-    if (row.dataset.kind === "closet") state.room.closets = state.room.closets.filter((c) => c.id !== row.dataset.id);
-    commit(before);
-    sync();
+    const removeBtn = e.target.closest("[data-act='remove']");
+    if (removeBtn) {
+      const row = removeBtn.closest(".opening");
+      const before = snapshot();
+      expandedOpenings.delete(row.dataset.id);
+      if (state.selectedOpeningId === row.dataset.id) state.selectedOpeningId = null;
+      if (row.dataset.kind === "door") state.room.doors = state.room.doors.filter((d) => d.id !== row.dataset.id);
+      if (row.dataset.kind === "window") state.room.windows = state.room.windows.filter((w) => w.id !== row.dataset.id);
+      if (row.dataset.kind === "closet") state.room.closets = state.room.closets.filter((c) => c.id !== row.dataset.id);
+      commit(before);
+      sync();
+      return;
+    }
+    const toggle = e.target.closest(".opening-toggle");
+    if (!toggle) return;
+    const row = toggle.closest(".opening");
+    const id = row.dataset.id;
+    if (expandedOpenings.has(id)) expandedOpenings.delete(id);
+    else expandedOpenings.add(id);
+    state.selectedOpeningId = id;
+    state.selectedId = null;
+    renderOpenings();
+    renderPieceList();
+    renderInspector();
+    draw();
   });
 
   document.getElementById("pieces").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-id]");
     if (!btn) return;
     state.selectedId = btn.dataset.id;
+    state.selectedOpeningId = null;
+    renderOpenings();
     renderPieceList();
     renderInspector();
     draw();
@@ -3092,27 +3370,13 @@ function boot() {
     addPieceFromCatalog(Number(document.getElementById("add-type").value));
   });
   document.getElementById("add-door").addEventListener("click", () => {
-    const before = snapshot();
-    const used = new Set(state.room.doors.map((d) => d.wall));
-    const wall = WALLS.find((w) => !used.has(w)) || "n";
-    state.room.doors.push({ id: uid(), wall, offset: 24, width: 32, height: 80, hinge: "start" });
-    normalize(state.room, state.pieces);
-    commit(before);
-    sync();
+    addOpening("door", { width: 32, height: 80, hinge: "start" });
   });
   document.getElementById("add-window").addEventListener("click", () => {
-    const before = snapshot();
-    state.room.windows.push({ id: uid(), wall: "n", offset: 24, width: 36, sill: 36, height: 48 });
-    normalize(state.room, state.pieces);
-    commit(before);
-    sync();
+    addOpening("window", { width: 36, sill: 36, height: 48 });
   });
   document.getElementById("add-closet").addEventListener("click", () => {
-    const before = snapshot();
-    state.room.closets.push({ id: uid(), wall: "e", offset: 12, width: 48, kind: "sliding", hinge: "start", height: 80 });
-    normalize(state.room, state.pieces);
-    commit(before);
-    sync();
+    addOpening("closet", { width: 48, kind: "sliding", hinge: "start", height: 80 });
   });
   const loadDoc = (doc) => {
     const before = snapshot();

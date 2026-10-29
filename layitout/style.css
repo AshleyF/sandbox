@@ -300,13 +300,37 @@ body[data-units="metric"] .dims input { width: 72px; }
 
 .opening-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   width: 100%;
   gap: 8px;
 }
 
 .opening-head button { padding: 4px 10px; }
+
+.opening-head .opening-toggle {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border-radius: 8px;
+  background: transparent;
+  padding: 6px 4px;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.opening.selected .opening-toggle {
+  background: #fff;
+  border-color: var(--accent);
+}
+
+.opening-edit {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding: 2px 0 6px;
+}
 
 .row, .add-row {
   display: flex;
@@ -317,7 +341,9 @@ body[data-units="metric"] .dims input { width: 72px; }
 
 #finishes[hidden],
 #materials[hidden],
-#tile-height-field[hidden] {
+#tile-height-field[hidden],
+#wet-walls-field[hidden],
+#store-links[hidden] {
   display: none;
 }
 
@@ -364,7 +390,7 @@ body[data-units="metric"] .dims input { width: 72px; }
 
 .buy-body small { color: var(--muted); }
 
-.buy-links { display: flex; gap: 10px; }
+.buy-links { display: flex; gap: 10px; margin: 0 0 8px; }
 
 .buy-links a { color: var(--accent); }
 
@@ -382,6 +408,29 @@ body[data-units="metric"] .dims input { width: 72px; }
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.piece-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.piece-row .piece {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+.piece-actions {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.piece-actions button {
+  padding: 6px 8px;
+  font-size: 12px;
 }
 
 .saved-room {
@@ -452,7 +501,7 @@ body[data-units="metric"] .dims input { width: 72px; }
 
 .inspector-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 

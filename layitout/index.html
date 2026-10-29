@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lay It Out</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='2' fill='%23e6d3b0' stroke='%23231e19' stroke-width='2'/%3E%3Crect x='8' y='9' width='16' height='14' rx='1' fill='%238d5e45'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <div class="app">
@@ -42,7 +42,7 @@
         <p class="view-hint" id="view-hint"></p>
         <div class="zoombox" id="zoombox">
           <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
-          <button type="button" id="zoom-fit">Fit</button>
+          <button type="button" id="zoom-fit">Fit room</button>
           <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
         </div>
         <div class="corner-controls" id="corner-controls" hidden>
@@ -62,10 +62,10 @@
         <summary>How to use this</summary>
         <ol>
           <li>Set the room size under <strong>Room</strong>. <strong>ft</strong> and <strong>cm</strong> only change how the numbers are shown.</li>
-          <li>Under <strong>Openings</strong>, <strong>Add door</strong>, <strong>Add window</strong>, and <strong>Add closet</strong> put a new one on a wall. <strong>Remove</strong> is on that opening. <strong>Wall</strong> picks the side. <strong>From the left</strong> (or <strong>From the top</strong> on a side wall) is how far along the wall it sits. <strong>Hinge</strong> is which end a door swings from.</li>
-          <li>Under <strong>In the room</strong>, add furniture, then drag it on the plan. Scroll to zoom. Double-click, or press R, to turn a piece. The dark edge is the back.</li>
+          <li>Under <strong>Openings</strong>, <strong>Add door</strong>, <strong>Add window</strong>, and <strong>Add closet</strong> put a new one on a clear stretch of wall. Each opening is one line. Click it to edit the wall, how far along it sits, and the width in feet and inches (or centimeters). Drag an opening along its wall on the plan. <strong>Remove</strong> stays on that line. <strong>Hinge</strong> is which end a door swings from.</li>
+          <li>Under <strong>In the room</strong>, add furniture, then drag it on the plan. <strong>Rotate</strong> and <strong>Delete</strong> are on each piece. Scroll to zoom. Double-click, or press R, to turn a piece. The dark edge is the back. <strong>Fit room</strong> zooms the plan to the walls. <strong>Fit</strong> keeps the door usable and the bed on a wall. <strong>Flow</strong> does that, and also prefers a solid wall behind the headboard and the desk off the door wall.</li>
           <li><strong>Walls</strong> and <strong>Corners</strong> show the same room from inside. <strong>Arrange</strong> places what you’ve added.</li>
-          <li><strong>Save this room</strong> keeps a named copy in this browser. The room you’re editing stays here as you work.</li>
+          <li><strong>Save this room</strong> keeps a named copy in this browser. <strong>Delete copy</strong> drops that copy. The room you’re editing stays here.</li>
         </ol>
       </details>
       <section>
@@ -130,13 +130,6 @@
       </section>
 
       <section>
-        <h2>Saved rooms</h2>
-        <p class="fine">The room you’re working on stays in this browser. A saved copy is one you can open again.</p>
-        <button type="button" id="save-room">Save this room</button>
-        <ul id="saved-rooms"></ul>
-      </section>
-
-      <section>
         <h2>Openings</h2>
         <div id="openings"></div>
         <div class="row">
@@ -156,7 +149,7 @@
             <option value="vinyl">Vinyl plank</option>
           </select>
         </label>
-        <label class="field">Tub walls
+        <label class="field" id="wet-walls-field">Tub walls
           <select id="wet-walls">
             <option value="none">Leave them</option>
             <option value="tile">Tile</option>
@@ -171,6 +164,7 @@
       <section id="materials" hidden>
         <h2>To buy</h2>
         <p class="fine" id="materials-note"></p>
+        <p class="buy-links" id="store-links"></p>
         <ul id="materials-list"></ul>
         <p class="materials-total" id="materials-total"></p>
       </section>
@@ -193,8 +187,14 @@
         <h2>Selected</h2>
         <div id="inspector"></div>
       </section>
+
+      <section>
+        <h2>Saved rooms</h2>
+        <button type="button" id="save-room">Save this room</button>
+        <ul id="saved-rooms"></ul>
+      </section>
     </aside>
   </div>
-  <script src="app.js"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
